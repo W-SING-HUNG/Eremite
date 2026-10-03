@@ -58,6 +58,6 @@ npm.cmd run verify
 
 源码版本为 **v1.6.1**，当前交付为 source-first，需要 Node.js，没有 Windows installer。File Converter **1.1.2**、PDF Tools **1.0.0-rc5（prerelease）** 和 Host integration 已完成独立技术验收。版本号描述源码身份；tag、GitHub Release 和安全报告渠道分别经过自己的发布门禁。`private: true` 用于防止意外 npm publication；源码仓库信息见 [finalization checklist](docs/public-baseline.md)。
 
-漏洞报告规则见 [SECURITY.md](SECURITY.md)。私密报告渠道待配置，不要在公开 Issue 中发布敏感信息。
+GitHub Private Vulnerability Reporting 已启用，漏洞报告规则和本仓私密报告入口见 [SECURITY.md](SECURITY.md)。不要在公开 Issues 中披露敏感漏洞细节。
 
 自有 Eremite Host 内容采用 [Apache License 2.0](LICENSE)。Copyright 2026 翁成航 (Chenghang Weng). 正式署名见 [NOTICE](NOTICE)。第三方依赖、Supplier artifacts 和原生组件遵循各自许可，根 LICENSE 不重新授权它们。第三方清单及待办见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。

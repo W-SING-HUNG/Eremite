@@ -43,15 +43,16 @@ engineering baseline. Real conversion engines, Windows SecretStore, isolated
 first-run/backup/AI browser acceptance and independent review remain separate
 evidence. Tests use disposable synthetic data; real user data is excluded.
 
-Public release additionally requires a working private security report channel,
-Supplier public artifacts with source provenance and
-license obligations, complete distribution notices, a reviewed clean export and
-fresh candidate-bound acceptance. File Converter 1.1.2, PDF Tools rc5 and Host
+Private security reporting is available through enabled GitHub Private
+Vulnerability Reporting; the reporting instructions are in SECURITY.md.
+Release publication follows its own authorization gates, covering source
+provenance, license obligations, distribution notices and reviewed source content.
+File Converter 1.1.2, PDF Tools rc5 and Host
 integration have completed independent technical acceptance. Sharp/libvips is
 VERIFIED FOR PUBLIC DISTRIBUTION for Supplier tgz + consumer obtains dependencies
 from npm, as confirmed by the product owner. Canonical source repositories are
 recorded in the documentation boundary below. Copyright attribution is finalized as
-Copyright 2026 翁成航 (Chenghang Weng). Security reporting remains pending;
+Copyright 2026 翁成航 (Chenghang Weng). Private security reporting is enabled;
 source-first delivery does not imply npm publication or a GitHub Release.
 
 See [documentation boundary](public-baseline.md), [security policy](../SECURITY.md),

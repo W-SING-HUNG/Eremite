@@ -43,7 +43,7 @@ in any public source/build distribution must also be recorded.
 Supplier source repositories remain independent. The Host license does not
 amend these embedded artifacts. The technical candidates replace the prior internal packages for Host
 acceptance; integration is not public release approval. Owner attribution is
-finalized in NOTICE. Security reporting and public release approval remain separate gates. Real source
+finalized in NOTICE. Private security reporting is enabled; release publication follows its own authorization gate. Real source
 repository URLs are now assigned; accepted archives retain their original bytes.
 
 ## Native and bundled dependency inventory
@@ -84,6 +84,6 @@ Supplier tgz files and dependency metadata, without installed node_modules.
 Retain upstream texts/attributions for the components actually distributed.
 Update this inventory whenever lockfile or accepted artifact bytes change.
 Owner attribution is finalized as Copyright 2026 翁成航 (Chenghang Weng).
-A usable private security report channel is still required. Repository visibility,
+Private security reporting is enabled and documented in SECURITY.md. Repository visibility,
 tags and GitHub Releases follow their own authorization gates. See
 [finalization checklist](docs/public-baseline.md) for the exact fill-in locations.

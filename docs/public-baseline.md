@@ -64,13 +64,16 @@ GitHub Release or npm publication.
 | `README.md`, Quick Start and source version | Canonical source URL supplied; Eremite v1.6.1 source-first delivery |
 | `package.json`, `repository`, `homepage`, `bugs` metadata | Real URLs supplied; Eremite package version 1.6.1 |
 | `package-lock.json`, root package metadata | Root version 1.6.1 matches package.json; URLs synchronized and dependency versions unchanged |
-| `SECURITY.md`, Reporting a Vulnerability | Configure and verify the real private security channel before inserting its usable link |
+| `SECURITY.md`, Reporting a Vulnerability | GitHub Private Vulnerability Reporting enabled and verified; each project links only to its own reporting page |
 | This document, public repository status | Repository URL blocker closed |
 | Independent Supplier clean source roots, package/README metadata | Each Supplier's actual source URL supplied in its clean root; original workspaces and accepted tgz bytes remain unchanged |
 
 All packages retain `private: true` to prevent accidental npm publication; this
 flag does not describe repository visibility. Source preparation, repository
 visibility and release publication follow their separate authorization gates.
-The security channel remains BLOCKED_PENDING_PUBLIC_REPO_SECURITY_CHANNEL.
-Immediately after public cutover, enable GitHub Private Vulnerability Reporting,
-verify it, then insert the actual usable reporting instructions.
+The three repositories are public and GitHub Private Vulnerability Reporting is
+enabled. Its status was checked through the official GET reporting endpoint,
+which returned enabled=true for each repository. Each SECURITY.md supplies the
+corresponding repository's own reporting page and sanitized report requirements.
+Security-channel closure is complete; no private email or unverified external
+reporting address is supplied.

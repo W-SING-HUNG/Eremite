@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "toolId": "core.file-converter",
+  "toolVersion": 1,
+  "supplier": {
+    "package": "file-converter-core",
+    "version": "1.1.2",
+    "artifactSha256": "0f287c70d8f5c4b7af1413545dd07cd1aaacf1c4285f2a3e4afc7a0bcb3ac7e7",
+    "contractId": "https://eremite.local/contracts/file-converter/v1.1/canonical-tool-contract-v1.1.json"
+  },
+  "conversions": [
+    { "id": "png-to-jpeg", "source": "png", "target": "jpeg", "engine": "sharp", "profiles": ["balanced", "high_quality", "lossless"], "defaultProfile": "balanced", "previewable": true },
+    { "id": "png-to-webp", "source": "png", "target": "webp", "engine": "sharp", "profiles": ["balanced", "high_quality", "lossless"], "defaultProfile": "balanced", "previewable": true },
+    { "id": "png-to-avif", "source": "png", "target": "avif", "engine": "sharp", "profiles": ["balanced", "high_quality", "lossless"], "defaultProfile": "balanced", "previewable": false },
+    { "id": "jpeg-to-png", "source": "jpeg", "target": "png", "engine": "sharp", "profiles": ["balanced", "high_quality", "lossless"], "defaultProfile": "balanced", "previewable": true },
+    { "id": "jpeg-to-webp", "source": "jpeg", "target": "webp", "engine": "sharp", "profiles": ["balanced", "high_quality", "lossless"], "defaultProfile": "balanced", "previewable": true },
+    { "id": "jpeg-to-avif", "source": "jpeg", "target": "avif", "engine": "sharp", "profiles": ["balanced", "high_quality", "lossless"], "defaultProfile": "balanced", "previewable": false },
+    { "id": "webp-to-png", "source": "webp", "target": "png", "engine": "sharp", "profiles": ["balanced", "high_quality", "lossless"], "defaultProfile": "balanced", "previewable": true },
+    { "id": "webp-to-jpeg", "source": "webp", "target": "jpeg", "engine": "sharp", "profiles": ["balanced", "high_quality", "lossless"], "defaultProfile": "balanced", "previewable": true },
+    { "id": "webp-to-avif", "source": "webp", "target": "avif", "engine": "sharp", "profiles": ["balanced", "high_quality", "lossless"], "defaultProfile": "balanced", "previewable": false },
+    { "id": "avif-to-png", "source": "avif", "target": "png", "engine": "sharp", "profiles": ["balanced", "high_quality", "lossless"], "defaultProfile": "balanced", "previewable": true },
+    { "id": "avif-to-jpeg", "source": "avif", "target": "jpeg", "engine": "sharp", "profiles": ["balanced", "high_quality", "lossless"], "defaultProfile": "balanced", "previewable": true },
+    { "id": "avif-to-webp", "source": "avif", "target": "webp", "engine": "sharp", "profiles": ["balanced", "high_quality", "lossless"], "defaultProfile": "balanced", "previewable": true },
+    { "id": "markdown-to-html", "source": "markdown", "target": "html", "engine": "pandoc", "profiles": ["standard"], "defaultProfile": "standard", "previewable": false },
+    { "id": "html-to-markdown", "source": "html", "target": "markdown", "engine": "pandoc", "profiles": ["standard"], "defaultProfile": "standard", "previewable": true },
+    { "id": "markdown-to-docx", "source": "markdown", "target": "docx", "engine": "pandoc", "profiles": ["standard"], "defaultProfile": "standard", "previewable": true },
+    { "id": "docx-to-pdf", "source": "docx", "target": "pdf", "engine": "libreoffice", "profiles": ["standard", "high_quality"], "defaultProfile": "standard", "previewable": true },
+    { "id": "xlsx-to-pdf", "source": "xlsx", "target": "pdf", "engine": "libreoffice", "profiles": ["standard", "high_quality"], "defaultProfile": "standard", "previewable": true },
+    { "id": "pptx-to-pdf", "source": "pptx", "target": "pdf", "engine": "libreoffice", "profiles": ["standard", "high_quality"], "defaultProfile": "standard", "previewable": true }
+  ]
+}

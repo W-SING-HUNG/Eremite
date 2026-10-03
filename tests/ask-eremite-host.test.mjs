@@ -1,0 +1,91 @@
+import assert from 'node:assert/strict';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { File } from 'node:buffer';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
+import sharp from 'sharp';
+
+const directory = await mkdtemp(path.join(tmpdir(), 'eremite-ask-host-'));
+process.env.EREMITE_DATA_DIR = directory;
+let database;
+try {
+  const projects = await import('@/modules/projects/service');
+  const inbox = await import('@/modules/inbox/service');
+  const actions = await import('@/modules/actions/service');
+  const { createAskEremiteHost, AskEremiteContextError } = await import('@/app/_services/ask-eremite-host');
+  database = await import('@/platform/db/database');
+  const projectId = projects.createProject({ name: 'AI Host Project', description: 'Bounded project context' });
+  const contentId = inbox.createLinkContentItem({ title: 'AI Host Content', url: 'https://example.com/read-only', projectId });
+  const actionId = actions.createAction({ title: 'AI Host Action', priority: 'high', projectId, contentItemIds: [contentId] });
+  const otherActionId = actions.createAction({ title: 'Other Action', priority: 'normal' });
+  const host = createAskEremiteHost();
+  assert.deepEqual(host.tools.map(tool => tool.definition.name), ['search_content', 'get_content', 'get_project', 'list_project_actions', 'create_action_draft', 'propose_action_update', 'propose_tool_run']);
+  assert.equal(host.tools.filter(tool => tool.access === 'read').length, 4);
+  assert.equal(host.tools.filter(tool => tool.access === 'draft-write').length, 1);
+
+  const byName = Object.fromEntries(host.tools.map(tool => [tool.definition.name, tool]));
+  const search = await byName.search_content.execute({ query: 'AI Host', limit: 10 });
+  assert.equal(search.data.length, 1);
+  assert.equal(search.sources[0].id, contentId);
+  assert.equal(search.sources[0].revision, 1);
+  assert.match(search.sources[0].href, new RegExp(projectId));
+  await assert.rejects(() => byName.search_content.execute({ query: 'x', limit: 50 }));
+
+  const content = await byName.get_content.execute({ id: contentId });
+  assert.deepEqual(content.data, { id: contentId, title: 'AI Host Content', status: 'inbox', kind: 'link', revision: 1, projectId, folderId: null, text: 'https://example.com/read-only' });
+  assert.equal(JSON.stringify(content.data).length < 14_000, true);
+  const project = await byName.get_project.execute({ id: projectId });
+  assert.equal(project.data.name, 'AI Host Project');
+  const projectActions = await byName.list_project_actions.execute({ projectId, limit: 20 });
+  assert.equal(projectActions.data.length, 1);
+  assert.equal(projectActions.data[0].id, actionId);
+  assert.equal(projectActions.sources[0].revision, 1);
+
+  const contentContext = await host.resolveContext({ kind: 'content', id: contentId });
+  assert.equal(contentContext.sources[0].id, contentId);
+  assert.match(contentContext.prompt, /AI Host Content/u);
+  const png = await sharp({ create: { width: 3, height: 2, channels: 3, background: '#386ba2' } }).png().toBuffer();
+  const pngId = await inbox.createFileContentItemFromStream({ body: new File([png], 'host-source.png', { type: 'image/png' }).stream(), originalName: 'host-source.png', mimeType: 'image/png', expectedSize: png.length });
+  const { listAcceptedFileConversionsForSource } = await import('@/modules/automations/tools/file-converter/authority');
+  const expectedConversions = listAcceptedFileConversionsForSource('png').map(conversion => ({ id: conversion.id, target: conversion.target, profiles: [...conversion.profiles], defaultProfile: conversion.defaultProfile }));
+  const contentCount = database.one('SELECT COUNT(*) AS n FROM content_items').n;
+  const pngRead = await byName.get_content.execute({ id: pngId });
+  assert.deepEqual(pngRead.data.availableFileConversions, expectedConversions, 'get_content exposes only Host authority conversions for the observed PNG');
+  assert.ok(pngRead.data.availableFileConversions.some(conversion => conversion.id === 'png-to-jpeg' && conversion.target === 'jpeg'));
+  assert.equal(pngRead.data.availableFileConversions.some(conversion => conversion.id === 'docx-to-pdf'), false, 'unsupported source conversion is absent');
+  assert.equal(pngRead.sources[0].revision, inbox.getContentItemSummary(pngId).revision);
+  assert.equal(pngRead.sources[0].fileVersionId, inbox.getFileAssetForViewing(pngId).versionId);
+  const pngContext = await host.resolveContext({ kind: 'content', id: pngId });
+  assert.match(pngContext.prompt, /availableFileConversions/u);
+  assert.match(pngContext.prompt, /png-to-jpeg/u);
+  assert.equal(pngContext.sources[0].revision, pngRead.sources[0].revision);
+  assert.equal(pngContext.sources[0].fileVersionId, pngRead.sources[0].fileVersionId);
+  assert.equal(database.one('SELECT COUNT(*) AS n FROM content_items').n, contentCount, 'capability read creates no output Content');
+  assert.equal(database.one('SELECT COUNT(*) AS n FROM ai_tool_run_proposals').n, 0, 'capability read creates no proposal');
+  assert.equal(database.one('SELECT COUNT(*) AS n FROM automation_runs').n, 0, 'capability read creates no Run');
+  const proposalTool = byName.propose_tool_run.definition;
+  assert.match(proposalTool.description, /MUST call this tool/u);
+  assert.match(proposalTool.description, /exact availableFileConversions id/u);
+  assert.equal(proposalTool.inputSchema.safeParse({ kind: 'file_converter', contentItemId: pngId }).success, false, 'conversionId is required');
+  assert.equal(proposalTool.inputSchema.safeParse({ kind: 'file_converter', contentItemId: pngId, conversionId: 'png-to-jpeg', toolId: 'unapproved' }).success, false, 'model schema remains strict');
+  const runtimeSource = await readFile(new URL('../src/modules/ai/runtime.ts', import.meta.url), 'utf8');
+  assert.match(runtimeSource, /you MUST call propose_tool_run/u);
+  assert.match(runtimeSource, /exact conversionId from availableFileConversions/u);
+  assert.match(runtimeSource, /Host rejected a proposal ONLY after propose_tool_run was actually called and returned a Tool error/u);
+  assert.equal((await host.resolveContext({ kind: 'project', id: projectId })).sources[0].id, projectId);
+  assert.equal((await host.resolveContext({ kind: 'actions', id: actionId })).sources[0].id, actionId);
+  assert.ok((await host.resolveContext({ kind: 'actions' })).sources.some(source => source.id === actionId), 'Actions page exposes bounded observed targets');
+  const scopedActions = await host.resolveContext({ kind: 'actions', projectId });
+  assert.deepEqual(scopedActions.sources.map(source => source.id), [actionId], 'Project Actions context cannot observe unrelated targets');
+  await assert.rejects(() => host.resolveContext({ kind: 'actions', projectId, id: otherActionId }), error => error instanceof AskEremiteContextError);
+  assert.deepEqual((await host.resolveContext({ kind: 'global' })).sources, []);
+  await assert.rejects(() => host.resolveContext({ kind: 'content', id: '00000000-0000-4000-8000-000000000000' }), error => error instanceof AskEremiteContextError);
+
+  const controller = new AbortController(); controller.abort();
+  await assert.rejects(() => host.resolveContext({ kind: 'project', id: projectId }, { abortSignal: controller.signal }), { name: 'AbortError' });
+  assert.equal(database.db().prepare('SELECT COUNT(*) AS n FROM ai_threads').get().n, 0, 'Host reads do not create AI state');
+  console.log('Ask Eremite Host gate passed: observed PNG authority conversions, explicit proposal instruction, bounded reads, provenance and abort.');
+} finally {
+  database?.db().close();
+  await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+}

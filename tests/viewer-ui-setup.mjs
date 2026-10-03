@@ -1,0 +1,50 @@
+import { createHash, randomUUID } from "node:crypto";
+import { File } from "node:buffer";
+import { mkdir, writeFile, unlink } from "node:fs/promises";
+import path from "node:path";
+import { imageFixtures, encryptedPdfFixture, makeDocxFixture, makeLongMarkdownFixture, makeLongTextFixture, makeOversizedPngHeader, makePdfFixture, makeZipFixture } from "./viewer-fixtures.mjs";
+
+const outputPath = process.argv[2];
+if (!process.env.EREMITE_DATA_DIR || !outputPath) throw new Error("EREMITE_DATA_DIR and an output path are required.");
+
+const inbox = await import("@/modules/inbox/service");
+const databaseModule = await import("@/platform/db/database");
+
+const create = async (title, name, type, contents) => inbox.createFileContentItem(new File([contents], name, { type }), title);
+const ids = {};
+ids.pdf = await create("PDF smoke", "viewer-smoke.pdf", "application/pdf", makePdfFixture("EREMITE PDF SMOKE", 2));
+ids.png = await create("PNG smoke", "viewer-smoke.png", "image/png", imageFixtures.png);
+ids.jpg = await create("JPG smoke", "viewer-smoke.jpg", "image/jpeg", imageFixtures.jpg);
+ids.webp = await create("WebP smoke", "viewer-smoke.webp", "image/webp", imageFixtures.webp);
+ids.txt = await create("TXT smoke", "viewer-smoke.txt", "text/plain", "Eremite TXT smoke fixture\nContinuous reading content.\n");
+ids.markdown = await create("Markdown smoke", "viewer-smoke.md", "text/markdown", "# Eremite Markdown Smoke\n\n- Quick Preview\n- Full Viewer\n\n![blocked](https://example.com/private.png)\n");
+ids.docx = await create("DOCX smoke", "viewer-smoke.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", await makeDocxFixture("EREMITE DOCX SMOKE"));
+ids.archive = await create("ZIP smoke", "viewer-smoke.zip", "application/zip", await makeZipFixture());
+ids.unsupported = await create("Unsupported smoke", "viewer-smoke.exe", "application/vnd.microsoft.portable-executable", "MZ unsupported fixture");
+ids.legacyDoc = await create("Legacy Word smoke", "legacy-word.doc", "application/msword", "legacy Word binary placeholder");
+ids.tooLarge = await create("Too large image", "too-large.png", "image/png", makeOversizedPngHeader());
+ids.encryptedPdf = await create("Encrypted PDF", "encrypted.pdf", "application/pdf", encryptedPdfFixture());
+const truncatedPdf = makePdfFixture("TRUNCATED PDF");
+ids.truncatedPdf = await create("Truncated PDF", "truncated.pdf", "application/pdf", truncatedPdf.subarray(0, 100));
+const malformedDocx = await makeDocxFixture("MALFORMED DOCX");
+ids.malformedDocx = await create("Malformed DOCX", "malformed.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", malformedDocx.subarray(0, malformedDocx.length - 24));
+ids.longText = await create("Long TXT", "long.txt", "text/plain", makeLongTextFixture());
+ids.longMarkdown = await create("Long Markdown", "long.md", "text/markdown", makeLongMarkdownFixture());
+ids.complexMarkdown = await create("Complex Markdown", "complex.md", "text/markdown", makeLongMarkdownFixture(4_000));
+ids.missing = await create("Missing file", "missing.txt", "text/plain", "missing fixture");
+const missingAsset = inbox.getFileAssetForViewing(ids.missing);
+await unlink(path.join(process.env.EREMITE_DATA_DIR, "files", missingAsset.storageKey));
+ids.integrity = await create("Integrity error", "integrity.txt", "text/plain", "original-integrity");
+const integrityAsset = inbox.getFileAssetForViewing(ids.integrity);
+await writeFile(path.join(process.env.EREMITE_DATA_DIR, "files", integrityAsset.storageKey), "changed-integrity");
+ids.loadFailed = await create("Load failed", "load-failed.txt", "text/plain", "temporary read failure");
+const loadFailedAsset = inbox.getFileAssetForViewing(ids.loadFailed);
+const loadFailedPath = path.join(process.env.EREMITE_DATA_DIR, "files", loadFailedAsset.storageKey);
+await unlink(loadFailedPath);
+await mkdir(loadFailedPath);
+
+const sessionId = randomUUID();
+databaseModule.db().prepare("INSERT INTO sessions (id, expires_at, created_at) VALUES (?, ?, ?)").run(sessionId, new Date(Date.now() + 3_600_000).toISOString(), new Date().toISOString());
+databaseModule.db().close();
+await writeFile(outputPath, JSON.stringify({ ids, sessionId, dataDirectory: process.env.EREMITE_DATA_DIR, digest: createHash("sha256").update(JSON.stringify(ids)).digest("hex") }, null, 2));
+console.log(`Viewer UI fixtures prepared: ${Object.keys(ids).length}`);

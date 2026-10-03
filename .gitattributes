@@ -1,0 +1,6 @@
+# Keep the source baseline stable across Windows environments.
+* text=auto eol=lf
+
+# Private engineering records must never enter the clean public export.
+/docs/internal export-ignore
+/.release-evidence export-ignore

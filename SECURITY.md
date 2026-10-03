@@ -2,9 +2,8 @@
 
 ## Supported Versions
 
-This policy describes Eremite v1.6.1 source-first distribution. A supported
-security maintenance version matrix requires its own approval; earlier versions
-have no declared maintenance commitment.
+This policy covers Eremite v1.6.1 source-first distribution. Earlier versions
+have no declared security maintenance commitment.
 
 ## Reporting a Vulnerability
 
@@ -18,7 +17,7 @@ Do not disclose sensitive vulnerability details in public Issues. Do not submit
 API keys, credentials, databases, private files or raw Provider responses.
 Include the affected version, a minimal synthetic reproduction, impact and
 sanitized diagnostics. Share only what is needed to reproduce.
-No unapproved response SLA or resolution timeline is promised.
+No response SLA or resolution timeline is promised.
 
 ## Local security boundary
 

@@ -1,0 +1,71 @@
+{
+  "name": "eremite",
+  "version": "1.6.1",
+  "description": "A local-first personal digital foundation.",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/run-next.mjs dev",
+    "build": "node scripts/run-next.mjs build",
+    "start": "node scripts/run-next.mjs start",
+    "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit",
+    "test": "node tests/loopback-policy.test.mjs && node tests/runtime-isolation.test.mjs && node tests/migration.test.mjs && node tests/core-flow.test.mjs && node tests/workspace-search.test.mjs && node tests/web-global-shadowing.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/command-palette-keyboard.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ui-primitives.test.mjs && node tests/responsive-accessibility.test.mjs && node tests/shell-language.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/workspace-context.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/resource-organization-ui.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/action-system-ui.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/inbox-processing-ui.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/automation-tool-platform.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ai-foundation.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ai-chat.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ai-content-snapshot.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ask-eremite-markdown.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/file-converter-artifact.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/external-tool-runner.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/file-converter-adapter.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/file-converter-integration.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/file-converter-recovery.test.mjs && node tests/file-converter-ui.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/pdf-tools-artifact.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/pdf-tools-external-runtime.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/pdf-tools-batch-lifecycle.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/pdf-tools-adapter.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/pdf-tools-integration.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/pdf-tools-recovery.test.mjs && node tests/pdf-tools-ui.test.mjs && node tests/project-workspace-contract.test.mjs && node tests/organization-ui-contract.test.mjs && node tests/lifecycle-ui.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/upload-contract.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/upload-client.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/upload-atomicity.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/file-lifecycle.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/text-editing.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/folder-tree.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/project-classification.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/unified-object-contracts.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/action-automation-context.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/inbox-processing.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/state-safety.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/search-pagination.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/backup-restore.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/fault-injection.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/writer-lease.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/viewer-controls.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/viewer.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/viewer-failure-classification.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/workspace-regression.test.mjs",
+    "test:ai": "node --import ./tests/register-typescript-loader.mjs tests/ai-foundation.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ai-chat.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ai-content-snapshot.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ai-action-drafts.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ai-action-updates.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ask-eremite-host.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ask-eremite-ui.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ask-eremite-markdown.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ai-provider-settings.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ai-provider-probe.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ai-structured-fallback.test.mjs",
+    "test:ai-native-tools:real": "node --import ./tests/register-typescript-loader.mjs tests/ai-tool-run-real-engines.test.mjs",
+    "test:ai:smoke": "node --import ./tests/register-typescript-loader.mjs scripts/ai-provider-smoke.mjs",
+    "test:ai:http": "node --import ./tests/register-typescript-loader.mjs tests/ai-chat-http.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ai-chat-http.test.mjs --unconfigured && node --import ./tests/register-typescript-loader.mjs tests/ai-provider-settings-http.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ai-provider-task-refresh.test.mjs",
+    "test:inbox-processing": "node --import ./tests/register-typescript-loader.mjs tests/inbox-processing.test.mjs",
+    "test:inbox-processing-ui": "node --import ./tests/register-typescript-loader.mjs tests/inbox-processing-ui.test.mjs",
+    "test:state-safety": "node --import ./tests/register-typescript-loader.mjs tests/state-safety.test.mjs",
+    "test:ui-primitives": "node --import ./tests/register-typescript-loader.mjs tests/ui-primitives.test.mjs",
+    "test:http-e2e": "node tests/http-auth-regression.test.mjs",
+    "test:viewer-http": "node --import ./tests/register-typescript-loader.mjs tests/viewer-http.test.mjs",
+    "test:upload-near-limit": "node --import ./tests/register-typescript-loader.mjs tests/upload-near-limit.test.mjs",
+    "test:runtime-smoke": "node tests/runtime-http-smoke.mjs",
+    "test:file-converter-engines": "node --import ./tests/register-typescript-loader.mjs tests/file-converter-real-engines.test.mjs",
+    "test:pdf-tools-engines": "node --import ./tests/register-typescript-loader.mjs tests/pdf-tools-adapter.test.mjs",
+    "test:data-copy-upgrade": "node tests/data-copy-upgrade.test.mjs",
+    "test:scale": "node --import ./tests/register-typescript-loader.mjs tests/scale-performance.test.mjs",
+    "maintenance:files": "node --import ./tests/register-typescript-loader.mjs scripts/file-maintenance.mjs",
+    "verify": "npm run typecheck && npm run test && node --import ./tests/register-typescript-loader.mjs tests/ai-action-drafts.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ai-action-updates.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ask-eremite-host.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/ask-eremite-ui.test.mjs && npm run build && npm run test:viewer-http && npm run test:upload-near-limit",
+    "test:loopback:http": "node tests/loopback-http.test.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24.15.0 <25"
+  },
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "^3.0.53",
+    "ai": "^7.0.107",
+    "docx-preview": "^0.4.0",
+    "dompurify": "^3.4.16",
+    "file-converter-core": "file:vendor/file-converter/file-converter-core-1.1.2.tgz",
+    "iconv-lite": "^0.7.0",
+    "jszip": "^3.10.1",
+    "lucide-react": "^0.468.0",
+    "next": "16.3.6",
+    "pdf-tools-core": "file:vendor/pdf-tools/pdf-tools-core-1.0.0-rc5.tgz",
+    "pdfjs-dist": "^6.2.108",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "typescript": "5.9.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/W-SING-HUNG/Eremite"
+  },
+  "homepage": "https://github.com/W-SING-HUNG/Eremite",
+  "bugs": {
+    "url": "https://github.com/W-SING-HUNG/Eremite/issues"
+  }
+}

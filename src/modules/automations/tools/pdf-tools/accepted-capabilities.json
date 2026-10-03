@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "toolId": "core.pdf-tools",
+  "toolVersion": 1,
+  "operations": [
+    {
+      "id": "pdf.merge",
+      "minimumInputs": 2,
+      "maximumInputs": 32,
+      "outputMode": "single"
+    },
+    {
+      "id": "pdf.split",
+      "minimumInputs": 1,
+      "maximumInputs": 1,
+      "outputMode": "multiple"
+    },
+    {
+      "id": "pdf.extract",
+      "minimumInputs": 1,
+      "maximumInputs": 1,
+      "outputMode": "single"
+    },
+    {
+      "id": "pdf.rotate",
+      "minimumInputs": 1,
+      "maximumInputs": 1,
+      "outputMode": "single"
+    },
+    {
+      "id": "pdf.reorder",
+      "minimumInputs": 1,
+      "maximumInputs": 1,
+      "outputMode": "single"
+    }
+  ]
+}

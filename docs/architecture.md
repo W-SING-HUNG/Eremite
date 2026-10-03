@@ -49,7 +49,7 @@ Tag is normalized many-to-many metadata across Content, Actions and Automation r
 
 Automation capabilities are compile-time built-in Tools. One shared catalog owns Tool metadata; server executors and client launchers attach only by the same stable Tool ID and are protected by registry-parity tests. The Automation shell owns discovery and Run History while each Tool owns validation, execution, and result interpretation.
 
-v1.3 ships three built-ins: Content-to-Action drafts, File Converter and PDF Tools. The two native external Tools execute through one Host-owned request/response runner with contained temporary workspaces, canonical contracts, fixed package identity and independent output validation. File Converter accepts exactly 18 Host-authorized conversions through Sharp, Pandoc or LibreOffice. PDF Tools accepts merge, split, extract, rotate and reorder through qpdf. Validated outputs enter Inbox only through its public single/batch File Lifecycle services with deterministic per-Run idempotency keys.
+The built-in Tools are Content-to-Action drafts, File Converter and PDF Tools. The two native external Tools execute through one Host-owned request/response runner with contained temporary workspaces, canonical contracts, fixed package identity and independent output validation. File Converter accepts exactly 18 Host-authorized conversions through Sharp, Pandoc or LibreOffice. PDF Tools accepts merge, split, extract, rotate and reorder through qpdf. Validated outputs enter Inbox only through its public single/batch File Lifecycle services with deterministic per-Run idempotency keys.
 
 Every accepted request has a unique `operation_id` and a server-generated Run ID. The current database-only Tool commits Actions through Actions' public batch service inside one shared Unit of Work, so Action rows, output relations, and the completed Run are all-or-nothing without crossing table ownership. This is request-level idempotency, not a blanket exactly-once guarantee for future external side effects.
 
@@ -59,7 +59,7 @@ Every accepted request has a unique `operation_id` and a server-generated Run ID
 
 Separate FTS5 trigram tables index Projects, Folders, Content, Actions and Automation runs. SQLite triggers maintain them; a rebuild and drift check are available. Two-character queries use escaped normalized substring matching. Project scope filters all Project members; Folder scope uses a recursive descendant CTE; Tag filters use join tables. Main resources and Folder children use server-side keyset pagination. Folder move destinations are lazy-searched and capped at 50 results rather than preloading a tree.
 
-The release scale gate builds more than 500,000 source objects and a 64-level path, then enforces p95 under 250ms for keyset lists, Folder children and Project search on the supported Windows/SQLite runtime.
+Performance regression tests construct more than 500,000 source objects and a 64-level path, then check p95 under 250ms for keyset lists, Folder children and Project search on the supported Windows/SQLite runtime. These are test thresholds, not a response-time guarantee for every device or dataset.
 
 ## Viewer and editing
 

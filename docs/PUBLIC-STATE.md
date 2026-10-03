@@ -1,59 +1,71 @@
-# Eremite public support baseline
+# Current public state
 
-This describes Eremite source version v1.6.1 and its source-first support scope.
-Canonical source: https://github.com/W-SING-HUNG/Eremite.
-Source version identity does not assert that a tag or GitHub Release exists.
+Eremite **v1.6.1** is the current source-first public release.
+See the [published release and release notes](https://github.com/W-SING-HUNG/Eremite/releases/tag/v1.6.1)
+and the [source repository](https://github.com/W-SING-HUNG/Eremite).
 
-## Supported environment and capabilities
+## Supported baseline
 
-Windows x64, Node.js >=24.15.0 <25 (recommended 24.15.0), local single-user use.
-Both accepted Suppliers require >=24 <25; the Host minimum is 24.15.0, so the
-published range is their intersection. Other platforms/Node majors have not been
-accepted. There is no installer or hosted deployment support.
+Windows x64, Node.js **>=24.15.0 <25** (recommended **24.15.0**), local single-user use.
+Other platforms and Node.js major versions are unverified.
+There is no Windows installer, hosted deployment or npm publication.
 
-Content includes files and links; Projects contain arbitrary-depth Folders;
-Tags classify across modules. Actions, Processing, Trash, immutable file
-versions, backups and search operate locally. Viewer is read-only except for
-explicit TXT/Markdown editing through the Host file lifecycle. ZIP preview only
-lists its directory. Uploads are limited to 512 MiB per file.
+The application stores data locally and binds its supported dev/start entry points
+to `127.0.0.1`. Do not expose it to the internet. Local authentication does not
+provide an internet deployment security model.
 
-## Supplier and AI boundaries
+## Current capabilities
 
-Supplier Core source stays in independent repositories. Host owns UI, routing,
-input policy, Run History, validation, database writes and file lifecycle.
-File Converter 1.1.2 has 18 accepted conversions, using Sharp, external Pandoc >=3.1
-and external LibreOffice >=7.6. Custom executable installations must be on PATH.
-PDF Tools 1.0.0-rc5 retains its prerelease identity and supports five operations
-with external qpdf 12.4.0 on the process
-PATH. rc5 contains no qpdf or Microsoft VC runtime binaries and has no vendor
-fallback. Missing or mismatched qpdf makes the capability unavailable. Output
-becomes Content only after Host acceptance.
+Content stores files and links. Projects contain arbitrary-depth Folders; Tags
+classify across modules. Actions, Processing, Trash, search, backups and immutable
+file versions operate locally. Uploads are limited to 512 MiB per file.
 
-AI is optional, request-bound and OpenAI-compatible. The application stores
-Provider keys in Windows Credential Manager. Complete server environment
-configuration is a fallback only when no application Provider profile exists.
-Host adapters read business context through owner services; AI can create
-bounded proposals requiring explicit confirmation. There is no autonomous
-agent or direct AI business-table access. Provider requests may leave the device.
+Viewer displays PDF, images, TXT, Markdown, DOCX, ZIP directories and video formats
+supported by the browser. DOCX layout is approximate. ZIP preview never extracts
+entries. Renderers are read-only; explicit TXT/Markdown saves use the Host file
+lifecycle to create a new immutable version.
 
-## Validation and remaining release work
+## Supplier boundary
 
-Clean local install, typecheck, automated contracts and production build form the
-engineering baseline. Real conversion engines, Windows SecretStore, isolated
-first-run/backup/AI browser acceptance and independent review remain separate
-evidence. Tests use disposable synthetic data; real user data is excluded.
+Host owns UI, policy, authorization, workspace isolation, routing, validation,
+persistence, File Lifecycle and Run History. Supplier cores execute bounded
+headless requests; their technical registries do not grant Host authorization.
 
-Private security reporting is available through enabled GitHub Private
-Vulnerability Reporting; the reporting instructions are in SECURITY.md.
-Release publication follows its own authorization gates, covering source
-provenance, license obligations, distribution notices and reviewed source content.
-File Converter 1.1.2, PDF Tools rc5 and Host
-integration have completed independent technical acceptance. Sharp/libvips is
-VERIFIED FOR PUBLIC DISTRIBUTION for Supplier tgz + consumer obtains dependencies
-from npm, as confirmed by the product owner. Canonical source repositories are
-recorded in the documentation boundary below. Copyright attribution is finalized as
-Copyright 2026 翁成航 (Chenghang Weng). Private security reporting is enabled;
-source-first delivery does not imply npm publication or a GitHub Release.
+- [File Converter v1.1.2](https://github.com/W-SING-HUNG/Eremite-File-Converter-Core):
+  18 supported conversion pairs using Sharp, external Pandoc **>=3.1** and external
+  LibreOffice **>=7.6**.
+- [PDF Tools v1.0.0-rc5](https://github.com/W-SING-HUNG/Eremite-PDF-Tools-Core):
+  prerelease; merge, split, extract, rotate and reorder with external qpdf
+  **exactly 12.4.0** on PATH. No bundled qpdf or Microsoft VC runtime.
 
-See [documentation boundary](public-baseline.md), [security policy](../SECURITY.md),
-[third-party inventory](../THIRD-PARTY-NOTICES.md) and [backup](backup-and-restore.md).
+External executables must be visible on the application process PATH.
+Host validates outputs before saving them as Content. Source tags identify source
+trees; they do not replace the fixed runtime archives used by Host.
+
+## AI and privacy
+
+AI is optional, OpenAI-compatible and triggered by explicit user requests.
+Application Provider keys are stored in Windows Credential Manager. Complete
+server process environment configuration is a fallback when no application
+Provider profile exists.
+
+Requests may send questions and permitted text context to the configured Provider.
+Binary file bytes are not sent as context. AI produces bounded proposals requiring
+user confirmation; Host revalidates them before execution. AI does not directly
+write business tables or run tools autonomously.
+
+## Data, support and licensing
+
+Use isolated synthetic data for tests. Create backups through the application;
+never copy a running SQLite database as a backup.
+
+GitHub Private Vulnerability Reporting is enabled. Use this repository's
+[private reporting page](https://github.com/W-SING-HUNG/Eremite/security/advisories/new)
+for vulnerabilities. Ordinary bugs and usage questions go to GitHub Issues.
+
+Host-owned content is Apache-2.0. Copyright 2026 翁成航 (Chenghang Weng).
+Third-party dependencies and Supplier components retain their own licenses.
+
+See [backup and restore](backup-and-restore.md), [distribution baseline](public-baseline.md),
+[security policy](../SECURITY.md), [support](../SUPPORT.md),
+[contributing](../CONTRIBUTING.md) and [third-party inventory](../THIRD-PARTY-NOTICES.md).

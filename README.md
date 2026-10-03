@@ -1,63 +1,134 @@
 # Eremite
 
-Eremite 是本地优先、单用户的个人数字底座：保存文件与链接，通过 Project、Folder 和 Tag 组织资料，管理行动，在用户确认后执行内置工具或应用 AI 提案。
+本地优先、单用户的个人数字资料与行动管理应用。
 
-数据保存在本机。当前支持 **Windows x64、Node.js >=24.15.0 <25（推荐 24.15.0）**；其他平台和 Node 主版本尚未验收。当前交付形态为源码运行，需要 Node，没有 Windows installer。
+Eremite 保存文件与链接，通过 Project、Folder 和 Tag 组织资料，并提供 Actions、Processing、Trash 和 Search。内置 Viewer 用于查看资料；File Converter 和 PDF Tools 在本机处理文件，结果经校验后保存为新资料，保留来源文件。
+
+数据保存在本机，AI Provider 为可选配置。Eremite Host 负责 UI、策略、授权、工作区隔离、路由、校验、持久化、File Lifecycle 和 Run History；Supplier Core 只提供无界面的文件处理能力。
+
+## 当前状态
+
+**Current release: v1.6.1** — [正式 Release 与 release notes](https://github.com/W-SING-HUNG/Eremite/releases/tag/v1.6.1)。
+
+- 支持 Windows x64，Node.js **>=24.15.0 <25**；推荐 **24.15.0**。
+- 当前为 source-first：从源码安装依赖并运行。
+- 无 Windows installer、无 hosted deployment，未发布 npm package。
+- 其他平台和 Node 主版本尚未验证。
 
 ## Quick Start
 
-在获取的 Eremite 源码根目录打开 PowerShell：
-
-Canonical source repository：[W-SING-HUNG/Eremite](https://github.com/W-SING-HUNG/Eremite)。源码版本为 **v1.6.1**，采用 source-first 交付；获取源码后从项目根目录运行下列命令。
+安装 Git 和上述 Node.js 版本后，在 Windows PowerShell 中运行：
 
 ```powershell
+git clone https://github.com/W-SING-HUNG/Eremite.git
+cd Eremite
 npm.cmd ci
 npm.cmd run dev
 ```
 
-打开 <http://127.0.0.1:3000>。首次运行设置本地密码，然后登录。日常启动仍使用 `npm.cmd run dev`。更换端口可用 `npm.cmd run dev -- --port 3001`。
+打开 <http://127.0.0.1:3000>，首次运行设置本地密码并登录。日常启动仍使用 `npm.cmd run dev`；更换端口可用 `npm.cmd run dev -- --port 3001`。请使用项目 npm scripts 启动应用。
 
-dev/start 均固定监听 `127.0.0.1`，会拒绝其他 hostname。Eremite 面向本机使用，不是 internet-facing hosted service；不要通过代理、端口转发或公网端口暴露它。本地密码不能替代网络隔离。请使用 npm scripts，不直接执行 `next dev/start`。
+## 核心能力
+
+| 能力 | 当前用途 |
+| --- | --- |
+| Content | 保存文件与链接，管理资料及不可变的文件版本；单文件上传上限 512 MiB。 |
+| Projects / Folders / Tags | 按 Project 和任意深度 Folder 组织资料，用 Tag 跨模块分类。 |
+| Actions | 管理行动、优先级、到期日、状态及来源资料。 |
+| Processing | 集中处理待整理资料。 |
+| Trash | 查看和恢复已移入回收站的对象；永久删除需要确认。 |
+| Search | 搜索资料、行动、Project、Folder 和工具运行记录，支持范围及 Tag 筛选。 |
+| Viewer | 查看 PDF、图片、TXT、Markdown、DOCX、ZIP 目录和浏览器支持的视频；DOCX 为近似排版，ZIP 不解压。TXT/Markdown 保存编辑时创建新文件版本。 |
+| File Converter | 18 条受 Host allowlist 控制的图片、文档及 Office → PDF 转换。 |
+| PDF Tools | PDF 合并、拆分、提取、旋转和重排页面。 |
+| AI | 可选的资料问答及待确认的 Action Draft、Action update 和 Native Tool proposal。 |
 
 ## 数据与备份
 
-SQLite 数据库、原文件和备份位于源码根目录的 `data/`，该目录不进入 Git。删除源码前请保留它。使用应用内“立即备份”，升级前另保存一份到设备之外；恢复需要停止应用并验证备份，详见 [备份与恢复](docs/backup-and-restore.md)。不要复制运行中的 SQLite 数据库充当备份。
+SQLite 数据库、原文件和备份默认位于项目根目录的 `data/`，该目录不进入 Git。删除或更换源码目录前，请保留数据。可用 `EREMITE_DATA_DIR` 指定其他数据目录。
 
-`EREMITE_DATA_DIR` 可指定其他数据目录；隔离测试必须使用新建的临时目录。不要把日常真实数据用于测试。生产构建自动使用临时数据目录。
+使用应用内“立即备份”，升级前另保存一份到设备之外。恢复须停止应用并验证备份，详见[备份与恢复](docs/backup-and-restore.md)。**不要复制运行中的 SQLite 数据库充当备份。**
 
-## 可选 AI Provider
+测试必须使用新建的隔离数据目录和合成数据，不能连接日常真实数据。生产构建使用临时数据目录。
 
-未配置 AI 时，资料、行动和本地工具仍可使用。应用内 AI Settings 支持 OpenAI-compatible Provider；只有用户显式发起 AI 请求或 Test Connection 才调用 Provider。请求可能包含问题及 Host 允许读取的资料文字，启用前请确认服务商的数据政策。
+## 安全边界
 
-应用内 API Key 保存在 Windows SecretStore（Credential Manager），不存数据库，也不返回客户端。只有没有应用内 Provider profile 时，才使用完整的服务端进程环境变量配置：`EREMITE_AI_BASE_URL`、`EREMITE_AI_API_KEY`、`EREMITE_AI_MODEL`。模板见 [.env.example](.env.example)；真实 Key 不得写入 Git、日志或公开问题报告。
+Eremite 面向本机单用户使用。项目的 dev/start scripts 固定监听 `127.0.0.1`，禁止通过公网接口、反向代理或端口转发暴露应用。**本地密码不是 internet deployment security model。** 请保护操作系统账户、Credential Manager、数据目录和备份。
 
-AI 只提出待确认的 Action Draft、Action update 或 Native Tool proposal。用户确认后，Host 才执行已有服务和校验；AI 不直接写业务数据库，不自主执行工具。Provider 出站连接不受入站 loopback 限制。
+漏洞报告入口及详细规则见 [SECURITY.md](SECURITY.md)。
 
-## 文件工具与预览
+## AI 与隐私
 
-- File Converter：18 条 Host allowlist 转换。图片由 Sharp 提供；文档转换需安装 [Pandoc](https://pandoc.org/installing.html) **>=3.1**，Office → PDF 需安装 [LibreOffice](https://www.libreoffice.org/download/download-libreoffice/) **>=7.6**。它们是可选的外部程序，不随 Host 源码捆绑。非默认安装目录（包括 D 盘）需加入 PATH 后重新启动 Eremite；未发现程序只表示当前进程无法访问对应能力。
-- PDF Tools：merge、split、extract、rotate、reorder；需单独安装 [qpdf 12.4.0](https://github.com/qpdf/qpdf/releases/tag/v12.4.0) 并将其 bin 目录加入 Eremite 进程 PATH。rc5 不捆绑 qpdf、Microsoft VC Runtime，也没有 vendor fallback；缺失或版本不符时对应能力不可用。
-- 每次工具执行都由 Host 校验输出，再创建新资料；来源文件保持不可变。
-- Viewer 支持 PDF、图片、TXT、Markdown、DOCX、ZIP 目录和常见浏览器视频。DOCX 为近似排版；ZIP 只看目录，不解压。单文件上传上限 512 MiB。
+AI 为可选功能。未配置 Provider 时，资料、行动和本地工具仍可使用。AI Settings 支持 OpenAI-compatible Provider，只有用户显式发起 AI 请求或 Test Connection 才向 Provider 出站连接。请求可能包含问题和 Host 允许读取的资料文字；启用前请了解服务商的数据政策。
 
-## Development / Tests
+应用内 API key 保存在 Windows Credential Manager，不存业务数据库，也不返回客户端。没有应用内 Provider profile 时，可使用完整的服务端进程环境配置：`EREMITE_AI_BASE_URL`、`EREMITE_AI_API_KEY`、`EREMITE_AI_MODEL`。模板见 [.env.example](.env.example)，真实凭据不得写入 Git、日志或公开问题报告。
 
-依赖须来自当前源码自己的 `node_modules`。dev 产物为 `.next-dev/`，production 产物为 `.next/`。
+AI proposal 需要用户确认。Host 在确认时重新验证提案及来源版本，再通过已有服务执行；AI 不直接写业务数据库，不自主执行工具。出站 Provider 请求不受入站 loopback 限制。
+
+## File Converter
+
+使用 [Eremite File Converter Core v1.1.2](https://github.com/W-SING-HUNG/Eremite-File-Converter-Core)。
+
+当前支持 18 条已验收的转换：PNG/JPEG/WebP/AVIF 之间的 12 条图片转换，Markdown → HTML、HTML → Markdown、Markdown → DOCX，以及 DOCX/XLSX/PPTX → PDF。
+
+- 图片转换使用 Sharp。
+- 文档转换需要外部 [Pandoc >=3.1](https://pandoc.org/installing.html)。
+- Office → PDF 需要外部 [LibreOffice >=7.6](https://www.libreoffice.org/download/download-libreoffice/)。
+
+Pandoc 和 LibreOffice 不随 Eremite 捆绑。安装位置可以在 C 盘或 D 盘；对应程序必须在运行 Eremite 的进程 PATH 中可访问，修改 PATH 后重启应用。缺少某个外部引擎时，对应转换不可用。
+
+## PDF Tools
+
+使用 [Eremite PDF Tools Core v1.0.0-rc5](https://github.com/W-SING-HUNG/Eremite-PDF-Tools-Core)，该 Supplier 版本保留 prerelease 身份。
+
+提供 merge、split、extract、rotate、reorder 五个操作。需要单独安装 [qpdf exactly 12.4.0](https://github.com/qpdf/qpdf/releases/tag/v12.4.0)，并将其 bin 目录加入应用进程 PATH。缺失或版本不符时，对应能力不可用。
+
+Eremite/PDF Tools 不捆绑 qpdf 或 Microsoft VC runtime，也不自动下载或回退到内置 qpdf。
+
+## Development
+
+在支持的 Windows/Node.js 环境中安装依赖后运行：
 
 ```powershell
 npm.cmd run typecheck
 npm.cmd test
 npm.cmd run verify
+npm.cmd run build
 ```
 
-生产模式：先停止开发服务，再运行 `npm.cmd run build` 和 `npm.cmd run start`。验证监听可运行 `npm.cmd run test:loopback:http`（需先 build）。真实 Provider、外部转换引擎及独立浏览器验收是单独门禁，普通测试 PASS 不代表已完成公开发布验收。
+测试只使用 isolated data 和合成文件。涉及真实 Provider 或外部引擎的测试须按各测试的前置要求运行，并检查跳过项。开发输出为 `.next-dev/`，生产输出为 `.next/`。
 
-架构见 [architecture](docs/architecture.md)，当前能力和限制见 [PUBLIC-STATE](docs/PUBLIC-STATE.md)，工程变更遵循 [AGENTS.md](AGENTS.md)。
+生产运行时，先停止开发服务，再执行 `npm.cmd run build` 和 `npm.cmd run start`。监听地址仍为 `127.0.0.1`。
 
-## 发布状态、安全与许可
+## Project structure / architecture
 
-源码版本为 **v1.6.1**，当前交付为 source-first，需要 Node.js，没有 Windows installer。File Converter **1.1.2**、PDF Tools **1.0.0-rc5（prerelease）** 和 Host integration 已完成独立技术验收。版本号描述源码身份；tag、GitHub Release 和安全报告渠道分别经过自己的发布门禁。`private: true` 用于防止意外 npm publication；源码仓库信息见 [finalization checklist](docs/public-baseline.md)。
+| 位置 | 职责 |
+| --- | --- |
+| `src/app/` | 页面、路由及应用服务组合。 |
+| `src/modules/` | 资料、行动、项目、标签、搜索、Viewer、工具及 AI 的模块边界。 |
+| `src/platform/` | SQLite、备份、文件 IO 等跨模块能力。 |
+| `db/migrations/` | 数据库迁移；已发布迁移只读。 |
+| `tests/` | 使用隔离数据的自动化验证。 |
+| `vendor/` | Host 使用的固定版本 Supplier runtime archives。 |
 
-GitHub Private Vulnerability Reporting 已启用，漏洞报告规则和本仓私密报告入口见 [SECURITY.md](SECURITY.md)。不要在公开 Issues 中披露敏感漏洞细节。
+Host owns **UI、policy、authorization、workspace isolation、routing、validation、persistence、File Lifecycle、Run History**。Supplier Core 只提供 headless capability；其技术注册表不赋予 Host 授权。业务模块通过公开服务交互，AI 通过 Host-owned adapters 访问上下文。
 
-自有 Eremite Host 内容采用 [Apache License 2.0](LICENSE)。Copyright 2026 翁成航 (Chenghang Weng). 正式署名见 [NOTICE](NOTICE)。第三方依赖、Supplier artifacts 和原生组件遵循各自许可，根 LICENSE 不重新授权它们。第三方清单及待办见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
+更多细节见[架构](docs/architecture.md)、[当前公共状态](docs/PUBLIC-STATE.md)和[运行及分发边界](docs/public-baseline.md)。
+
+## Contributing
+
+小而聚焦的改动更容易审查。环境、测试和 Host-owned policy 要求见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+## Support
+
+普通 bug 和使用问题请通过 GitHub Issues 提交，所需信息见 [SUPPORT.md](SUPPORT.md)。
+
+## Security
+
+安全问题请使用 [GitHub Private Vulnerability Reporting](https://github.com/W-SING-HUNG/Eremite/security/advisories/new)，不要在 public Issues 中披露敏感细节。报告规则见 [SECURITY.md](SECURITY.md)。
+
+## License
+
+自有 Eremite Host 内容采用 [Apache-2.0](LICENSE)。
+
+Copyright 2026 翁成航 (Chenghang Weng). 署名见 [NOTICE](NOTICE)。第三方依赖和 Supplier components 保留各自许可，详见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。

@@ -32,6 +32,12 @@ npm.cmd run build
 runtime behavior change 必须带有覆盖该行为的测试。不要降低 validator、contracts 或 tests
 来让检查通过。数据库迁移只新增，不能改写已发布迁移。
 
+## CI
+
+面向 `main` 的 PR 和 `main` push 会自动运行 [GitHub Actions CI](.github/workflows/ci.yml)。
+提交前仍建议在支持的环境中运行 `npm.cmd run verify`。CI failure 必须解决，不能通过降低
+validator、contracts 或 tests 绕过。涉及实际运行结果时，请链接对应 CI run，并如实说明失败或跳过项。
+
 ## Host-owned policy boundary
 
 Host owns UI、policy、authorization、workspace isolation、routing、validation、persistence、

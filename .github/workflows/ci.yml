@@ -20,8 +20,6 @@ jobs:
     name: Verify
     runs-on: windows-latest
     timeout-minutes: 60
-    env:
-      EREMITE_DATA_DIR: "${{ runner.temp }}/eremite-ci-data"
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -62,8 +60,10 @@ jobs:
           if ($qpdfOutput.Count -eq 0 -or $qpdfOutput[0] -cne 'qpdf version 12.4.0') { throw 'qpdf exactly 12.4.0 is required' }
       - name: "Create isolated data directory"
         run: |
-          if (Test-Path -LiteralPath $env:EREMITE_DATA_DIR) { throw 'CI data directory must be new' }
-          New-Item -ItemType Directory -Path $env:EREMITE_DATA_DIR -ErrorAction Stop | Out-Null
+          $dataDir = [IO.Path]::GetFullPath((Join-Path $env:RUNNER_TEMP 'eremite-ci-data'))
+          if (Test-Path -LiteralPath $dataDir) { throw 'CI data directory must be new' }
+          New-Item -ItemType Directory -Path $dataDir -ErrorAction Stop | Out-Null
+          "EREMITE_DATA_DIR=$dataDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: "Install locked dependencies"
         run: |
           npm.cmd ci
@@ -84,7 +84,7 @@ jobs:
         if: "always()"
         run: |
           $temporaryRoot = [IO.Path]::GetFullPath($env:RUNNER_TEMP).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
-          $targets = @((Join-Path $env:RUNNER_TEMP 'eremite-ci-qpdf'), $env:EREMITE_DATA_DIR)
+          $targets = @((Join-Path $env:RUNNER_TEMP 'eremite-ci-qpdf'), (Join-Path $env:RUNNER_TEMP 'eremite-ci-data'))
           foreach ($target in $targets) {
             $absolute = [IO.Path]::GetFullPath($target)
             if (-not $absolute.StartsWith($temporaryRoot, [StringComparison]::OrdinalIgnoreCase)) { throw 'Cleanup target outside runner temp' }

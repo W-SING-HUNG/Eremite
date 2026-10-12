@@ -1,6 +1,6 @@
 import { readFile, stat, unlink } from "node:fs/promises";
 import path from "node:path";
-import { all, assertUnitOfWork, filesDirectory, one, run, transaction, type UnitOfWork } from "@/platform/db/database";
+import { all, assertUnitOfWork, filesDirectory, one, run, transaction, withUnitOfWork, type UnitOfWork } from "@/platform/db/database";
 import { discardStagedUpload, managedFilePath, promoteStagedUpload, stageUploadedFile, stageUploadedStream, type StagedUpload, type StoredFile } from "@/platform/files/service";
 import { withDataWriterLease } from "@/platform/files/writer-lease";
 import { maximumFileUploadBytes } from "@/modules/inbox/upload-contract";
@@ -352,6 +352,7 @@ export async function createFileContentItemFromStream(input: {
   projectId?: string | null;
   folderId?: string | null;
   idempotencyKey?: string;
+  beforeCommit?: (uow: UnitOfWork) => void;
 }) {
   return withDataWriterLease(async () => {
     await reconcilePendingFileWrites();
@@ -367,7 +368,7 @@ export async function createFileContentItemFromStream(input: {
     try {
       staged = await stageUploadedStream({ ...input, maximumBytes: maximumFileUploadBytes });
       markFileWriteStaged(operationId, staged);
-      return await commitStagedNewFile(operationId, staged, input.title, input.projectId, input.folderId);
+      return await commitStagedNewFile(operationId, staged, input.title, input.projectId, input.folderId, input.beforeCommit);
     } catch (error) {
       if (staged) await discardStagedUpload(staged);
       markFileWriteFailed(operationId, error);
@@ -385,6 +386,7 @@ export type BatchFileContentInput = {
   projectId?: string | null;
   folderId?: string | null;
   idempotencyKey: string;
+  beforeCommit?: (uow: UnitOfWork) => void;
 };
 
 /**
@@ -432,7 +434,7 @@ export async function createFileContentItemsFromStreams(inputs: BatchFileContent
       }
       return transaction(() => promoted.map((entry, index) => {
         const input = inputs[index];
-        return insertNewLogicalFile(entry.operationId, entry.stored, input.title, input.projectId, input.folderId);
+        return insertNewLogicalFile(entry.operationId, entry.stored, input.title, input.projectId, input.folderId, input.beforeCommit);
       }));
     } catch (error) {
       await Promise.all(staged.map((entry) => discardStagedUpload(entry.file)));
@@ -456,6 +458,14 @@ export function getFileCreationByIdempotencyKey(idempotencyKey: string) {
     idempotencyKey,
   );
   return operation ? { state: operation.state, contentId: operation.content_id, versionId: operation.version_id } : null;
+}
+
+/** Read-only owner contract: includes failed/reconciled receipts and all ordinals. */
+export function hasFileCreationReceiptWithPrefix(prefix: string) {
+  // ASCII namespaces have an exact BINARY range, using the existing unique key index.
+  if (!/^[\x20-\x7e]+$/u.test(prefix)) throw new FileLifecycleError("invalid_metadata");
+  const upper = prefix.slice(0, -1) + String.fromCharCode(prefix.charCodeAt(prefix.length - 1) + 1);
+  return Boolean(one("SELECT id FROM file_write_operations WHERE operation_type = 'upload' AND idempotency_key >= ? AND idempotency_key < ? LIMIT 1", prefix, upper));
 }
 
 export async function replaceFileContentItemFromStream(input: {
@@ -579,15 +589,17 @@ export async function saveEditedText(input: {
   });
 }
 
-async function commitStagedNewFile(operationId: string, staged: StagedUpload, title?: string, projectId?: string | null, folderId?: string | null) {
+async function commitStagedNewFile(operationId: string, staged: StagedUpload, title?: string, projectId?: string | null, folderId?: string | null, beforeCommit?: (uow: UnitOfWork) => void) {
   const promoted = await promoteStagedUpload(staged);
   run("UPDATE file_write_operations SET state = 'published', staged_path = NULL, updated_at = ? WHERE id = ?", now(), operationId);
-  return insertNewLogicalFile(operationId, promoted.stored, title, projectId, folderId);
+  return insertNewLogicalFile(operationId, promoted.stored, title, projectId, folderId, beforeCommit);
 }
 
-function insertNewLogicalFile(operationId: string, stored: StoredFile, title?: string, projectId?: string | null, folderId?: string | null) {
+function insertNewLogicalFile(operationId: string, stored: StoredFile, title?: string, projectId?: string | null, folderId?: string | null, beforeCommit?: (uow: UnitOfWork) => void) {
   const timestamp = now();
   return transaction(() => {
+    // The owning workflow fences its terminal state in this exact commit transaction.
+    withUnitOfWork(beforeCommit ?? (() => undefined));
     const location = validateLocation(projectId, folderId);
     const existingBlob = one<{ id: string; byte_size: number; storage_key: string }>("SELECT id, byte_size, storage_key FROM file_blobs WHERE sha256 = ?", stored.sha256);
     if (existingBlob && (existingBlob.byte_size !== stored.byteSize || existingBlob.storage_key !== stored.storageKey)) {

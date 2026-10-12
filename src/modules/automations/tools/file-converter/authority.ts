@@ -4,10 +4,8 @@ import canonicalContract from "./canonical-tool-contract-v1.1.json" with { type:
 export const FILE_CONVERTER_TOOL_ID = "core.file-converter";
 export const FILE_CONVERTER_TOOL_VERSION = 1;
 export const FILE_CONVERTER_PACKAGE_NAME = "file-converter-core";
-export const FILE_CONVERTER_PACKAGE_VERSION = "1.1.2";
-export const FILE_CONVERTER_ARTIFACT_SHA256 = "0f287c70d8f5c4b7af1413545dd07cd1aaacf1c4285f2a3e4afc7a0bcb3ac7e7";
-export const FILE_CONVERTER_CONTRACT_SHA256 = "8df14f74d6900ca343e4f2c13b938edc5f8e3ce6f2c9d3987289f91dca442de9";
-export const FILE_CONVERTER_NATIVE_HELPER_SHA256 = "282d4647cd36842162ee577e2c76686a234abb6a5e37c3b7928f6bcf78075a22";
+export const FILE_CONVERTER_PACKAGE_VERSION = "1.1.3";
+export const FILE_CONVERTER_ARTIFACT_SHA256 = "566d03e5850d0fd966482f55028f136d809ed902801ecdad097abbc1ad2ba1c6";
 export const FILE_CONVERTER_CONTRACT_ID = "https://eremite.local/contracts/file-converter/v1.1/canonical-tool-contract-v1.1.json";
 
 export type FileConverterFormat = "png" | "jpeg" | "webp" | "avif" | "markdown" | "html" | "docx" | "xlsx" | "pptx" | "pdf";
@@ -41,7 +39,8 @@ function assertAuthorityDocument() {
   const ids = new Set(document.conversions.map((entry) => entry.id));
   if (document.conversions.length !== 18 || ids.size !== 18) throw new Error("file_converter_allowlist_invalid");
   for (const conversion of document.conversions) {
-    if (!conversion.profiles.includes(conversion.defaultProfile)) throw new Error("file_converter_default_profile_invalid");
+    if (conversion.defaultProfile !== (conversion.engine === "sharp" ? "balanced" : "standard")
+      || conversion.profiles.length !== 1 || conversion.profiles[0] !== conversion.defaultProfile) throw new Error("file_converter_default_profile_invalid");
   }
 }
 

@@ -19,7 +19,7 @@ assert.doesNotMatch(outputValidationSource, /@\/modules\/viewer\//u, "File Conve
 assert.doesNotMatch(platformInspectionSources.join("\n"), /@\/modules\//u, "Platform file inspection must not depend on product modules");
 
 const installed = await resolveInstalledFileConverter();
-assert.equal(installed.packageVersion, "1.1.2");
+assert.equal(installed.packageVersion, "1.1.3");
 assert.ok(installed.cliPath.endsWith(path.join("dist", "cli", "index.js")));
 assert.ok(installed.nativeHelperPath.endsWith("fc-movefile.exe"));
 
@@ -45,7 +45,7 @@ try {
     return converted.length;
   });
   assert.equal(result.response.status, "succeeded");
-  assert.equal(result.response.coreVersion, "1.1.2");
+  assert.equal(result.response.coreVersion, "1.1.3");
   if (result.response.status === "succeeded") assert.ok(result.value > 0);
 
   const validDocx = await makeDocxFixture("File Converter validation");

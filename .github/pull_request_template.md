@@ -17,3 +17,22 @@ Explain any Supplier contract impact. Preserve Host-owned policy, authorization,
 - [ ] No secrets, real user data, unsanitized logs or generated QA/temp artifacts are included.
 - [ ] Validators, contracts and tests were not weakened to make checks pass.
 - [ ] Any runtime behavior change includes relevant tests, and contract compatibility is described.
+
+## Change and validation
+
+Describe the concrete behavior change and the checks actually performed. State any NOT VERIFIED acceptance separately.
+
+## Project state impact
+
+- [ ] Updated current project state
+- [ ] No state update needed
+
+If an ordinary monitored change needs no update, replace the applicable placeholder with a specific explanation of why capabilities, limits, verification and next steps stay accurate:
+
+- tools: <specific reason for Tool/Retry/Launcher changes>
+- provider: <specific reason for Provider/runtime changes>
+- governance: <specific review reason for CI/state-checker/test changes and their effect on gate strength>
+
+Critical Host/Supplier version boundaries, capability lists, artifacts and Contracts require a substantive change to their corresponding current entry in `docs/PUBLIC-STATE.md`, including actual values for changed versions; this explanation cannot waive that requirement or any fact/behavior check. Updating only history, dates, whitespace or unrelated current entries does not synchronize that boundary. CI/state-checker/test changes always require a concrete `governance` review explanation under the applicable checkbox; ordinary CI maintenance may select no state update needed. Reviewers judge explanation/description truth and the state-impact of unmonitored changes.
+
+Current state describes the target code tree. Record branch/PR/CI workflow evidence here or under dated historical evidence, not as long-term pending instructions. After authorized merge, inspect main and its CI at Git/GitHub.

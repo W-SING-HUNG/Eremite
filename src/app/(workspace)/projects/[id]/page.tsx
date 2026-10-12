@@ -6,7 +6,7 @@ import { ActionsWorkspace } from "@/app/_components/actions-workspace";
 import { AutomationsWorkspace } from "@/app/_components/automations-workspace";
 import { updateProjectAction } from "@/app/resource-actions";
 import { listActionContentLinks, listDraftActionsForContentItems, listProjectActionsPage } from "@/modules/actions/service";
-import { listProjectAutomationRunsPage } from "@/modules/automations/service";
+import { getAutomationRunView, listProjectAutomationRunsPage } from "@/modules/automations/service";
 import { reconcileInterruptedAutomationRuns } from "@/modules/automations/reconciliation";
 import { listTools } from "@/modules/automations/registry";
 import { listAvailableContentItemsByIds, listContentItemsInFolderPage } from "@/modules/inbox/service";
@@ -30,6 +30,8 @@ export default async function ProjectPage({ params, searchParams }: {
   const actionPage = tab === "actions" ? listProjectActionsPage(id, { cursor: query.actionCursor, limit: 50 }) : null;
   if (tab === "automations") reconcileInterruptedAutomationRuns();
   const runPage = tab === "automations" ? listProjectAutomationRunsPage(id, { cursor: query.runCursor, limit: 50 }) : null;
+  const selectedRun = runPage && query.selected ? getAutomationRunView(query.selected) : undefined;
+  if (runPage && selectedRun && !selectedRun.trashed_at && selectedRun.project_id === id && !runPage.items.some(item => item.id === selectedRun.id)) runPage.items.push(selectedRun);
   const actionLinks = actionPage ? listActionContentLinks(actionPage.items.map((item) => item.id)) : [];
   const actionContent = listAvailableContentItemsByIds(actionLinks.map((link) => link.content_item_id));
   const archived = Boolean(project.archived_at);

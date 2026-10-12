@@ -1080,6 +1080,7 @@ input[type="checkbox"]:not(.ui-checkbox > input):disabled, input[type="radio"]:d
 .ask-compose-actions small { font-size: 11px; color: var(--color-text-muted); }
 @media (max-width: 839px) {
   .ask-eremite-trigger { right: 12px; bottom: 78px; }
+  .workspace-content:has(.file-converter-settings) ~ .ask-eremite-trigger { position: static; justify-self: end; margin: 0 16px 16px; }
   .ui-dialog.ask-eremite-panel { inset: 0; width: 100%; height: 100dvh; border-radius: 0; }
   .ask-compose-actions small { max-width: 140px; }
   .ask-draft-card dl > div { grid-template-columns: 82px minmax(0, 1fr); }

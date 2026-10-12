@@ -16,6 +16,8 @@ import { run } from "@/platform/db/database";
 import {
   getAcceptedPdfToolsCapability,
   PDF_TOOLS_TOOL_ID,
+  PDF_TOOLS_LIMITS,
+  pdfToolsCanonicalContract,
   type PdfToolsOperation,
 } from "@/modules/automations/tools/pdf-tools/authority";
 import {
@@ -24,8 +26,10 @@ import {
   type PdfToolsSuccess,
 } from "@/modules/automations/tools/pdf-tools/contract";
 import { withPdfToolsOutputs, PdfToolsProtocolError } from "@/modules/automations/tools/pdf-tools/host-adapter";
+import { ExternalToolWorkspaceError } from "@/platform/external-tools/request-runner";
 import { getPdfToolsAvailability } from "@/modules/automations/tools/pdf-tools/availability";
 import { resolveInstalledPdfTools } from "@/modules/automations/tools/pdf-tools/runtime";
+import { assertRetryDestinationAvailable, assertRetryPayload, captureRetryEvidence, fixedRetryAsset, policyFingerprint, ToolRetryError } from "@/modules/automations/tools/retry-snapshot";
 
 type Item = NonNullable<ReturnType<typeof getAvailableContentItemSummary>>;
 type Asset = NonNullable<ReturnType<typeof getFileAssetForViewing>>;
@@ -100,7 +104,7 @@ export const pdfToolsServerTool = {
     let folderId: string | null = null;
     let folderNameSnapshot: string | null = null;
     if (projectId) {
-      folderId = requestedFolderId ?? pairs[0].item.folder_id;
+      folderId = value.folderId === undefined ? pairs[0].item.folder_id : requestedFolderId;
       if (folderId) {
         const folder = isFolderAvailable(folderId, projectId);
         if (!folder) throw new AutomationContextError("project_mismatch");
@@ -122,14 +126,38 @@ export const pdfToolsServerTool = {
     };
   },
 
-  encodeInputPayload(input: PdfToolsInput) {
+  encodeInputPayload(input: PdfToolsInput): Record<string, unknown> {
     return {
       schemaVersion: 1,
       operation: input.operation,
       inputs: input.contentItemIds.map((contentId, index) => ({ contentId, versionId: input.assets[index].versionId })),
       ...(input.parameters === undefined ? {} : { parameters: input.parameters }),
       destination: { projectId: input.projectId, folderId: input.folderId, folderNameSnapshot: input.folderNameSnapshot },
+      retryEvidence: captureRetryEvidence(input.contentItemIds, input, policyFingerprint({ capability: getAcceptedPdfToolsCapability(input.operation), contract: pdfToolsCanonicalContract, limits: PDF_TOOLS_LIMITS })),
     };
+  },
+
+  validateRetryInput(payload: unknown): PdfToolsInput {
+    const value = payload as { retryEvidence?: unknown; operation: PdfToolsOperation; inputs: Array<{ contentId: string; versionId: string }>; parameters?: PdfToolsParameters; destination: { projectId: string | null; folderId: string | null } };
+    if (!value?.retryEvidence || !Array.isArray(value.inputs) || !value.destination) throw new ToolRetryError("retry_snapshot_incomplete");
+    assertRetryDestinationAvailable(value.destination);
+    const assets = value.inputs.map(source => fixedRetryAsset(source.contentId, source.versionId));
+    const raw: Record<string, unknown> = { operation: value.operation, contentItemIds: value.inputs.map(source => source.contentId), folderId: value.destination.folderId };
+    const parameters = value.parameters;
+    const pages = (selector: { mode: string; pages?: number[] }) => {
+      if (selector.mode !== "pages" || !Array.isArray(selector.pages) || selector.pages.some(page => !Number.isSafeInteger(page) || page < 0)) throw new ToolRetryError("retry_snapshot_incomplete");
+      return selector.pages.map(page => page + 1).join(",");
+    };
+    if (parameters && "strategy" in parameters) raw.splitEvery = parameters.strategy.n;
+    if (parameters && "pageSelector" in parameters) raw.pageSelector = pages(parameters.pageSelector);
+    if (parameters && "pages" in parameters) { raw.pageSelector = pages(parameters.pages); raw.rotateAngle = parameters.angle; raw.rotateMode = parameters.mode; }
+    if (parameters && "pageOrder" in parameters) raw.pageOrder = pages({ mode: "pages", pages: parameters.pageOrder });
+    const input = pdfToolsServerTool.validateInput(raw, { projectId: value.destination.projectId });
+    input.assets = assets;
+    input.folderId = value.destination.folderId;
+    input.folderNameSnapshot = value.destination.folderId ? isFolderAvailable(value.destination.folderId, input.projectId ?? undefined)?.name ?? null : null;
+    assertRetryPayload(payload, pdfToolsServerTool.encodeInputPayload(input));
+    return input;
   },
 
   summarizeInput(input: PdfToolsInput) {
@@ -147,7 +175,7 @@ export const pdfToolsServerTool = {
     });
   },
 
-  async executeExternal(input: PdfToolsInput, context: { runId: string; writePending: (payload: unknown) => void }): Promise<PdfToolsOutput> {
+  async executeExternal(input: PdfToolsInput, context: { runId: string; writePending: (payload: unknown) => void; assertRunning: () => void }): Promise<PdfToolsOutput> {
     const result = await withPdfToolsOutputs({
       invocationId: context.runId,
       operation: input.operation,
@@ -182,6 +210,7 @@ export const pdfToolsServerTool = {
         projectId: input.projectId,
         folderId: input.folderId,
         idempotencyKey: outputIdempotencyKey(context.runId, index),
+        beforeCommit: context.assertRunning,
       })));
       const created = contentIds.map((contentId, index) => {
         const asset = getFileAssetForViewing(contentId);
@@ -215,6 +244,7 @@ export const pdfToolsServerTool = {
   },
 
   mapError(error: unknown) {
+    if (error instanceof ExternalToolWorkspaceError) return { code: "host_workspace_unavailable", message: "工具临时工作目录不可用，请检查目录配置后重试。" };
     if (error instanceof PdfToolsBusinessError) return { code: error.response.error.code, message: hostFailureMessage(error.response.error.code) };
     if (error instanceof PdfToolsProtocolError) return { code: error.code, message: "PDF 工具未能完成安全调用，未保存任何结果。" };
     return { code: "host_pdf_tools_failed", message: "PDF 结果未能完整提交到资料库。" };

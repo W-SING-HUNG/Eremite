@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef } from "react";
+import { useId, useRef, type RefObject } from "react";
 import { X } from "lucide-react";
 import { IconButton } from "@/app/_components/ui/button";
 import { OverlayPortal, useDismissableLayer, useFocusScope } from "@/app/_components/ui/overlay";
@@ -10,6 +10,7 @@ type DialogProps = {
   title: string;
   description?: string;
   onClose: () => void;
+  triggerRef?: RefObject<HTMLElement | null>;
   children: React.ReactNode;
   className?: string;
   hideHeader?: boolean;
@@ -18,7 +19,7 @@ type DialogProps = {
 };
 
 export function Dialog({
-  open, title, description, onClose, children, className = "", hideHeader = false, dismissible = true, role = "dialog",
+  open, title, description, onClose, triggerRef, children, className = "", hideHeader = false, dismissible = true, role = "dialog",
 }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -26,6 +27,7 @@ export function Dialog({
   const layerId = useDismissableLayer({
     open,
     panelRef,
+    triggerRef,
     onDismiss: () => { if (dismissible) onClose(); },
     modal: true,
     returnFocus: true,

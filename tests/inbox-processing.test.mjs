@@ -182,8 +182,8 @@ try {
   const draftRows = actions.listDraftActionsForContentItems([multiA, multiB]);
   assert.deepEqual(
     draftRows.map((row) => ({ contentId: row.content_item_id, actionId: row.id })),
-    [{ contentId: multiA, actionId: multiDraftId }, { contentId: multiB, actionId: multiDraftId }],
-    "the batch Draft read returns only live linked drafts for the requested Content IDs",
+    [multiA, multiB].sort().map((contentId) => ({ contentId, actionId: multiDraftId })),
+    "the batch Draft read returns only live linked drafts in content_item_id ascending order",
   );
   assert.equal(draftRows.some((row) => [excludedActiveId, excludedDoneId, excludedTrashedDraftId].includes(row.id)), false);
   const multiResult = processing.processContentWithAcceptedDraft({

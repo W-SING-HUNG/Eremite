@@ -7,6 +7,7 @@ import { pipeline } from "node:stream/promises";
 import { getAcceptedFileConversion, type FileConverterFormat } from "@/modules/automations/tools/file-converter/authority";
 import { assertCanonicalFileConverterRequest, fileConverterFormat, parseCanonicalFileConverterResponse, type FileConverterFailure, type FileConverterRequest, type FileConverterSuccess } from "@/modules/automations/tools/file-converter/contract";
 import { resolveInstalledFileConverter } from "@/modules/automations/tools/file-converter/runtime";
+import { fileConverterProcessEnvironment, resolveFileConverterExecutable } from "@/modules/automations/tools/file-converter/dependencies";
 import { validateSupplierOutput, type ValidatedSupplierOutput } from "@/modules/automations/tools/file-converter/output-validation";
 import { createExternalToolWorkspace, discardExternalToolWorkspace, runExternalTool } from "@/platform/external-tools/request-runner";
 
@@ -31,7 +32,9 @@ export async function withFileConverterOutput<T>(input: FileConverterAdapterInpu
   if (!accepted || accepted.source !== input.sourceFormat) throw new FileConverterProtocolError("host_conversion_not_accepted");
   const profile = input.profile ?? accepted.defaultProfile;
   if (!accepted.profiles.includes(profile)) throw new FileConverterProtocolError("host_profile_not_accepted");
-  const installed = await resolveInstalledFileConverter();
+  const installed = await resolveInstalledFileConverter(true);
+  const dependency = accepted.engine === "sharp" ? null : await resolveFileConverterExecutable(accepted.engine);
+  if (accepted.engine !== "sharp" && !dependency) throw new FileConverterProtocolError("host_dependency_unavailable");
   const workspace = await createExternalToolWorkspace("eremite-file-converter-");
   try {
     const inputPath = path.join(workspace.inputDir, "source");
@@ -48,7 +51,9 @@ export async function withFileConverterOutput<T>(input: FileConverterAdapterInpu
       limits: { maxInputBytes: 512 * 1024 * 1024, maxOutputBytes: 512 * 1024 * 1024, maxWorkspaceBytes: 1024 * 1024 * 1024, timeoutMs },
     };
     assertCanonicalFileConverterRequest(request);
-    const processResult = await runExternalTool({ cliPath: installed.cliPath, workspace, request, timeoutMs: timeoutMs + 10_000 });
+    const processResult = await runExternalTool({ cliPath: installed.cliPath, workspace, request, timeoutMs: timeoutMs + 10_000,
+      ...(dependency ? { env: fileConverterProcessEnvironment(workspace.root, dependency) } : {}),
+    });
     if (processResult.timedOut) throw new FileConverterProtocolError("host_core_timeout");
     if (processResult.exitCode !== 0 || !processResult.responseText) throw new FileConverterProtocolError("host_core_protocol_failed");
     let raw: unknown; try { raw = JSON.parse(processResult.responseText); } catch { throw new FileConverterProtocolError("host_core_response_invalid"); }

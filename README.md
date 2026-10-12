@@ -8,7 +8,7 @@ Eremite 保存文件与链接，通过 Project、Folder 和 Tag 组织资料，�
 
 ## 当前状态
 
-**Current release: v1.6.1** — [正式 Release 与 release notes](https://github.com/W-SING-HUNG/Eremite/releases/tag/v1.6.1)。
+**Published release: v1.6.1 (unchanged); this tree is a maintenance source candidate** — [正式 Release 与 release notes](https://github.com/W-SING-HUNG/Eremite/releases/tag/v1.6.1)。
 
 - 支持 Windows x64，Node.js **>=24.15.0 <25**；推荐 **24.15.0**。
 - 当前为 source-first：从源码安装依赖并运行。
@@ -67,7 +67,7 @@ AI proposal 需要用户确认。Host 在确认时重新验证提案及来源版
 
 ## File Converter
 
-使用 [Eremite File Converter Core v1.1.2](https://github.com/W-SING-HUNG/Eremite-File-Converter-Core)。
+使用 [Eremite File Converter Core runtime 1.1.3 (Supplier published source remains v1.1.2)](https://github.com/W-SING-HUNG/Eremite-File-Converter-Core)。
 
 当前支持 18 条已验收的转换：PNG/JPEG/WebP/AVIF 之间的 12 条图片转换，Markdown → HTML、HTML → Markdown、Markdown → DOCX，以及 DOCX/XLSX/PPTX → PDF。
 
@@ -75,7 +75,7 @@ AI proposal 需要用户确认。Host 在确认时重新验证提案及来源版
 - 文档转换需要外部 [Pandoc >=3.1](https://pandoc.org/installing.html)。
 - Office → PDF 需要外部 [LibreOffice >=7.6](https://www.libreoffice.org/download/download-libreoffice/)。
 
-Pandoc 和 LibreOffice 不随 Eremite 捆绑。安装位置可以在 C 盘或 D 盘；对应程序必须在运行 Eremite 的进程 PATH 中可访问，修改 PATH 后重启应用。缺少某个外部引擎时，对应转换不可用。
+Pandoc 和 LibreOffice 不随 Eremite 捆绑。安装位置可以在 C 盘或 D 盘；对应程序可通过应用进程 PATH，或 server-only FFC_PANDOC_PATH / FFC_SOFFICE_PATH 绝对路径配置；修改启动环境后重启应用。图像仅接受 balanced 默认质量，文档仅接受 standard；短工具目录配置见 runtime 文档。缺少某个外部引擎时，对应转换不可用。
 
 ## PDF Tools
 
@@ -132,3 +132,7 @@ Host owns **UI、policy、authorization、workspace isolation、routing、valida
 自有 Eremite Host 内容采用 [Apache-2.0](LICENSE)。
 
 Copyright 2026 翁成航 (Chenghang Weng). 署名见 [NOTICE](NOTICE)。第三方依赖和 Supplier components 保留各自许可，详见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
+
+## Maintenance source candidate
+
+This source candidate retains Host package 1.6.1 and adds safe failed-Run Retry, explicit Project-root destinations, complete backup/WAL validation and bounded native runtime settings. Next is locked to 16.3.8; FC runtime is 1.1.3 / Sharp 0.35.5. PDF remains rc5 with external qpdf. The published v1.6.1 tag is unchanged; candidate validation and independent acceptance remain separate. See [current support scope](docs/PUBLIC-STATE.md) and [runtime configuration](docs/tool-runtime.md).

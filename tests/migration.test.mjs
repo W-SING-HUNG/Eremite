@@ -22,6 +22,7 @@ try {
   const aiActionDisambiguation = await readFile(path.join(process.cwd(), "db", "migrations", "0010_ai_action_disambiguation.sql"), "utf8");
   const aiToolRunProposals = await readFile(path.join(process.cwd(), "db", "migrations", "0011_ai_tool_run_proposals.sql"), "utf8");
   const aiMessageActivities = await readFile(path.join(process.cwd(), "db", "migrations", "0012_ai_message_activities.sql"), "utf8");
+  const retry = await readFile(path.join(process.cwd(), "db", "migrations", "0013_automation_run_retry.sql"), "utf8");
   db.exec(initial);
   const stamp = "2026-01-01T00:00:00.000Z";
   db.prepare("INSERT INTO file_assets VALUES (?, ?, ?, ?, ?, ?, ?)").run("shared-asset", "a".repeat(64), "original.txt", "text/plain", 7, "a".repeat(64), stamp);
@@ -41,7 +42,7 @@ try {
   try { db.exec(search); db.exec("COMMIT"); }
   catch (error) { db.exec("ROLLBACK"); throw error; }
   db.exec("BEGIN IMMEDIATE");
-  try { db.exec(compatibility); db.exec(automation); db.exec(conversations); db.exec(aiActionDrafts); db.exec(aiActionUpdates); db.exec(aiActionDisambiguation); db.exec(aiToolRunProposals); db.exec(aiMessageActivities); db.exec("COMMIT"); }
+  try { db.exec(compatibility); db.exec(automation); db.exec(conversations); db.exec(aiActionDrafts); db.exec(aiActionUpdates); db.exec(aiActionDisambiguation); db.exec(aiToolRunProposals); db.exec(aiMessageActivities); db.exec(retry); db.exec("COMMIT"); }
   catch (error) { db.exec("ROLLBACK"); throw error; }
 
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all().map((row) => row.name);
@@ -78,11 +79,13 @@ try {
   assert.equal(migratedRun.target_version, 1);
   assert.equal(migratedRun.target_name_snapshot, "从资料生成行动草稿");
   assert.equal(migratedRun.operation_id, "legacy-run");
+  assert.equal(migratedRun.retry_of_run_id, null, "0013 preserves historical Runs without guessing lineage");
+  for (const name of ["automation_runs_retry_parent_uq", "automation_runs_retry_identity_immutable", "automation_runs_retry_require_failed_parent", "automation_runs_retry_preserve_history"]) assert.ok(schema.has(name));
   assert.equal(migratedRun.automation_key, "inbox-to-drafts", "legacy shadow preserves released data");
   assert.equal(db.prepare("PRAGMA integrity_check").get().integrity_check, "ok");
   assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
   assert.throws(() => db.prepare("INSERT INTO action_content_items (action_id, content_item_id, created_at) VALUES ('missing', 'missing', 'now')").run());
   assert.throws(() => db.prepare("INSERT INTO content_items (id, kind, title, tags, status, created_at, updated_at) VALUES ('x', 'file', 'broken', '', 'inbox', 'now', 'now')").run());
   db.close();
-  console.log("Migration test passed: populated v1 data upgrades through 0012, including AI tool proposals and durable activities.");
+  console.log("Migration test passed: populated v1 data upgrades through 0013, preserving historical Runs and adding guarded retry lineage.");
 } finally { await rm(directory, { recursive: true, force: true }); }

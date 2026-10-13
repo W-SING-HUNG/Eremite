@@ -5,9 +5,13 @@ const launcher = await readFile(new URL("../src/app/_components/automations/pdf-
 const result = await readFile(new URL("../src/app/_components/automations/pdf-tools-result-renderer.tsx", import.meta.url), "utf8");
 const registry = await readFile(new URL("../src/app/_components/automations/tool-ui-registry.tsx", import.meta.url), "utf8");
 const styles = await readFile(new URL("../src/app/styles.css", import.meta.url), "utf8");
+const actions = await readFile(new URL("../src/app/actions.ts", import.meta.url), "utf8");
 
 for (const operation of ["pdf.merge", "pdf.split", "pdf.extract", "pdf.rotate", "pdf.reorder"]) assert.match(launcher, new RegExp(operation.replace(".", "\\.")));
 for (const field of ["contentItemIds", "splitEvery", "pageSelector", "rotateAngle", "rotateMode", "pageOrder", "folderId"]) assert.match(launcher, new RegExp(field));
+assert.match(launcher, /setFolderId\(item\.project_id \? item\.folder_id \?\? "" : ""\)/u, "Launcher initially preserves the first source location");
+assert.match(launcher, /value: "", label: "专案根目录"/u, "root is an explicit empty option");
+assert.match(actions, /toolId === PDF_TOOLS_TOOL_ID[\s\S]*?folderId: formData\.has\("folderId"\) \? value\(formData, "folderId"\) \|\| null : undefined/u, "PDF Tools Action preserves omitted vs explicit root FormData");
 assert.match(launcher, /PDF 合并顺序/);
 assert.match(launcher, /上移/);
 assert.match(launcher, /下移/);

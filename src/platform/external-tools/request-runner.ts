@@ -1,5 +1,5 @@
 import { execFile, spawn } from "node:child_process";
-import { mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -10,24 +10,50 @@ export type ExternalToolWorkspace = {
 
 export type ExternalToolProcessResult = { exitCode: number; timedOut: boolean; stdout: string; stderr: string; responseText: string | null };
 
+export class ExternalToolWorkspaceError extends Error {
+  readonly code = "external_workspace_root_invalid";
+  constructor() { super("external_workspace_root_invalid"); this.name = "ExternalToolWorkspaceError"; }
+}
+
 export async function createExternalToolWorkspace(prefix: string): Promise<ExternalToolWorkspace> {
-  const root = await mkdtemp(path.join(tmpdir(), prefix));
-  const inputDir = path.join(root, "input"); const outputDir = path.join(root, "output");
-  const workDir = path.join(root, "work"); const logsDir = path.join(root, "logs");
-  await Promise.all([inputDir, outputDir, workDir, logsDir].map((directory) => mkdir(directory)));
-  const rootReal = await realpath(root);
-  const [inputDirReal, outputDirReal, workDirReal, logsDirReal] = await Promise.all(
-    [inputDir, outputDir, workDir, logsDir].map((directory) => resolveContainedDirectory(rootReal, directory)),
-  );
-  return {
-    root: rootReal,
-    inputDir: inputDirReal,
-    outputDir: outputDirReal,
-    workDir: workDirReal,
-    logsDir: logsDirReal,
-    requestPath: path.join(rootReal, "request.json"),
-    responsePath: path.join(rootReal, "response.json"),
-  };
+  const configured = process.env.EREMITE_TOOL_WORKSPACE_DIR;
+  const base = configured ? await resolveConfiguredWorkspaceRoot(configured) : tmpdir();
+  let root: string;
+  try { root = await mkdtemp(path.join(base, configured ? "et-" : prefix)); }
+  catch { throw new ExternalToolWorkspaceError(); }
+  try {
+    const inputDir = path.join(root, "input"); const outputDir = path.join(root, "output");
+    const workDir = path.join(root, "work"); const logsDir = path.join(root, "logs");
+    // Sequential creation ensures cleanup cannot race still-pending mkdir calls.
+    for (const directory of [inputDir, outputDir, workDir, logsDir]) await mkdir(directory);
+    const rootReal = await realpath(root);
+    const [inputDirReal, outputDirReal, workDirReal, logsDirReal] = await Promise.all(
+      [inputDir, outputDir, workDir, logsDir].map((directory) => resolveContainedDirectory(rootReal, directory)),
+    );
+    return {
+      root: rootReal,
+      inputDir: inputDirReal,
+      outputDir: outputDirReal,
+      workDir: workDirReal,
+      logsDir: logsDirReal,
+      requestPath: path.join(rootReal, "request.json"),
+      responsePath: path.join(rootReal, "response.json"),
+    };
+  } catch (error) { await rm(root, { recursive: true, force: true, maxRetries: 3 }); throw error; }
+}
+
+async function resolveConfiguredWorkspaceRoot(configured: string) {
+  try {
+    if (!path.isAbsolute(configured) || configured.startsWith("\\\\")
+      || (process.platform === "win32" && !/^[a-z]:[\\/]/iu.test(configured))) throw new ExternalToolWorkspaceError();
+    const absolute = path.resolve(configured);
+    for (let current = absolute;; current = path.dirname(current)) {
+      const info = await lstat(current);
+      if (!info.isDirectory() || info.isSymbolicLink()) throw new ExternalToolWorkspaceError();
+      if (path.dirname(current) === current) break;
+    }
+    return await realpath(absolute);
+  } catch { throw new ExternalToolWorkspaceError(); }
 }
 
 export async function runExternalTool(input: {

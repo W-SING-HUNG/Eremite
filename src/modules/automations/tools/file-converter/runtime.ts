@@ -3,13 +3,14 @@ import { readFile, realpath, stat } from "node:fs/promises";
 import { findPackageJSON } from "node:module";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { fileConverterCanonicalContract, FILE_CONVERTER_PACKAGE_NAME, FILE_CONVERTER_PACKAGE_VERSION, FILE_CONVERTER_CONTRACT_SHA256, FILE_CONVERTER_NATIVE_HELPER_SHA256 } from "@/modules/automations/tools/file-converter/authority";
+import { fileConverterCanonicalContract, FILE_CONVERTER_NATIVE_HELPER_SHA256, FILE_CONVERTER_PACKAGE_NAME, FILE_CONVERTER_PACKAGE_VERSION } from "@/modules/automations/tools/file-converter/authority";
 
 export type InstalledFileConverter = { packageRoot: string; cliPath: string; nativeHelperPath: string; packageVersion: string };
 
 let installedCache: Promise<InstalledFileConverter> | undefined;
 
-export function resolveInstalledFileConverter() {
+export function resolveInstalledFileConverter(force = false) {
+  if (force) installedCache = undefined;
   return installedCache ??= inspectInstalledFileConverter();
 }
 
@@ -29,9 +30,7 @@ async function inspectInstalledFileConverter(): Promise<InstalledFileConverter> 
   const cliPath = await assertInstalledFile(packageRoot, path.join(packageRoot, bin));
   const nativeHelperPath = await assertInstalledFile(packageRoot, path.join(packageRoot, "dist", "native", "bin", "fc-movefile.exe"));
   if (createHash("sha256").update(await readFile(nativeHelperPath)).digest("hex") !== FILE_CONVERTER_NATIVE_HELPER_SHA256) throw new Error("file_converter_native_helper_drift");
-  const contractBytes = await readFile(path.join(packageRoot, "tool-contract.json"));
-  if (createHash("sha256").update(contractBytes).digest("hex") !== FILE_CONVERTER_CONTRACT_SHA256) throw new Error("file_converter_installed_contract_drift");
-  const installedContract = JSON.parse(contractBytes.toString("utf8"));
+  const installedContract = JSON.parse(await readFile(path.join(packageRoot, "tool-contract.json"), "utf8"));
   if (JSON.stringify(installedContract) !== JSON.stringify(fileConverterCanonicalContract)) throw new Error("file_converter_installed_contract_drift");
   return { packageRoot, cliPath, nativeHelperPath, packageVersion: manifest.version };
 }

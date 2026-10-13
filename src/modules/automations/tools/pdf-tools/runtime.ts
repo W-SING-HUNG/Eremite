@@ -23,7 +23,8 @@ export type InstalledPdfTools = {
 
 let installedCache: Promise<InstalledPdfTools> | undefined;
 
-export function resolveInstalledPdfTools() {
+export function resolveInstalledPdfTools(force = false) {
+  if (force) installedCache = undefined;
   return installedCache ??= inspectInstalledPdfTools();
 }
 

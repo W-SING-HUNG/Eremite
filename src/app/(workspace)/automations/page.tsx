@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AutomationsWorkspace } from "@/app/_components/automations-workspace";
-import { listAutomationRunsPage } from "@/modules/automations/service";
+import { getAutomationRunView, listAutomationRunsPage } from "@/modules/automations/service";
 import { reconcileInterruptedAutomationRuns } from "@/modules/automations/reconciliation";
 import { listTools } from "@/modules/automations/registry";
 import { listObjectTagsMap, listTags } from "@/modules/tags/service";
@@ -10,6 +10,8 @@ export default async function AutomationsPage({ searchParams }: { searchParams: 
   const params = await searchParams;
   reconcileInterruptedAutomationRuns();
   const page = listAutomationRunsPage({ cursor: params.cursor, limit: 50 });
+  const selected = params.selected ? getAutomationRunView(params.selected) : undefined;
+  if (selected && !selected.trashed_at && !page.items.some(item => item.id === selected.id)) page.items.push(selected);
   return <>
     {params.error && <div className="integrity-notice">{mutationNoticeMessage(params.error)}</div>}
     {params.success && <div className="success-notice">操作已完成。</div>}

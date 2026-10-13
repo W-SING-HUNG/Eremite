@@ -56,7 +56,7 @@ export async function withPdfToolsOutputs<T>(
   if (!capability) throw new PdfToolsProtocolError("host_pdf_operation_not_accepted");
   if (input.inputs.length < capability.minimumInputs || input.inputs.length > capability.maximumInputs) throw new PdfToolsProtocolError("host_pdf_input_count_invalid");
   if (input.operation === "pdf.merge" ? input.parameters !== undefined : input.parameters === undefined) throw new PdfToolsProtocolError("host_pdf_parameters_invalid");
-  const installed = await resolveInstalledPdfTools();
+  const installed = await resolveInstalledPdfTools(true);
   const workspace = await createExternalToolWorkspace("eremite-pdf-tools-");
   try {
     const requestInputs: PdfToolsRequest["inputs"] = [];

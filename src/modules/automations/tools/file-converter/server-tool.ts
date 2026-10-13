@@ -8,10 +8,12 @@ import { assertProjectAcceptsMembers } from "@/modules/projects/service";
 import { getFolderBreadcrumbs, isFolderAvailable, listProjectFolders } from "@/modules/projects/folders";
 import { managedFilePath } from "@/platform/files/service";
 import { run } from "@/platform/db/database";
-import { getAcceptedFileConversion, listAcceptedFileConversionsForSource, type FileConverterFormat } from "@/modules/automations/tools/file-converter/authority";
+import { getAcceptedFileConversion, listAcceptedFileConversionsForSource, fileConverterCanonicalContract, type FileConverterFormat } from "@/modules/automations/tools/file-converter/authority";
+import { assertRetryDestinationAvailable, assertRetryPayload, captureRetryEvidence, fixedRetryAsset, policyFingerprint, ToolRetryError } from "@/modules/automations/tools/retry-snapshot";
 import { withFileConverterOutput, FileConverterProtocolError } from "@/modules/automations/tools/file-converter/host-adapter";
 import { fileConverterFormat, type FileConverterFailure, type FileConverterSuccess } from "@/modules/automations/tools/file-converter/contract";
 import { getFileConverterAvailability } from "@/modules/automations/tools/file-converter/availability";
+import { ExternalToolWorkspaceError } from "@/platform/external-tools/request-runner";
 
 export type FileConverterToolInput = {
   contentItemId: string; conversionId: string; profile: string; projectId: string | null; folderId: string | null; folderNameSnapshot: string | null;
@@ -36,20 +38,34 @@ export const fileConverterServerTool = {
     const projectId = context.projectId === undefined ? item.project_id : context.projectId;
     if (projectId !== item.project_id) throw new AutomationContextError("project_mismatch"); assertProjectAcceptsMembers(projectId);
     const requestedFolderId = String(value.folderId ?? "").trim() || null; let folderId: string | null = null; let folderNameSnapshot: string | null = null;
-    if (projectId) { folderId = requestedFolderId ?? item.folder_id; if (folderId) { const folder = isFolderAvailable(folderId, projectId); if (!folder) throw new AutomationContextError("project_mismatch"); folderNameSnapshot = folder.name; } }
+    // Only an omitted destination uses the source folder; null/empty explicitly selects the Project root.
+    if (projectId) { folderId = value.folderId === undefined ? item.folder_id : requestedFolderId; if (folderId) { const folder = isFolderAvailable(folderId, projectId); if (!folder) throw new AutomationContextError("project_mismatch"); folderNameSnapshot = folder.name; } }
     else if (requestedFolderId) throw new AutomationContextError("project_mismatch");
     const profile = String(value.profile ?? conversion.defaultProfile); if (!conversion.profiles.includes(profile)) throw new AutomationContextError("input_unavailable");
     return { contentItemId, conversionId, profile, projectId, folderId, folderNameSnapshot, item, asset, sourceFormat };
   },
-  encodeInputPayload(input: FileConverterToolInput) { return { schemaVersion: 1, contentItemId: input.contentItemId, sourceVersionId: input.asset.versionId, conversionId: input.conversionId, profile: input.profile, destination: { projectId: input.projectId, folderId: input.folderId, folderNameSnapshot: input.folderNameSnapshot } }; },
+  encodeInputPayload(input: FileConverterToolInput) { return { schemaVersion: 1, contentItemId: input.contentItemId, sourceVersionId: input.asset.versionId, conversionId: input.conversionId, profile: input.profile, destination: { projectId: input.projectId, folderId: input.folderId, folderNameSnapshot: input.folderNameSnapshot }, retryEvidence: captureRetryEvidence([input.contentItemId], input, policyFingerprint({ capability: getAcceptedFileConversion(input.conversionId), contract: fileConverterCanonicalContract, limits: { maxInputBytes: 512 * 1024 * 1024, maxOutputBytes: 512 * 1024 * 1024, maxWorkspaceBytes: 1024 * 1024 * 1024, timeoutMs: getAcceptedFileConversion(input.conversionId)?.engine === 'libreoffice' ? 180_000 : 60_000 } })) }; },
+  validateRetryInput(payload: unknown): FileConverterToolInput {
+    const value = payload as ReturnType<typeof fileConverterServerTool.encodeInputPayload>;
+    if (!value?.retryEvidence || !value.destination || typeof value.profile !== "string" || typeof value.sourceVersionId !== "string") throw new ToolRetryError("retry_snapshot_incomplete");
+    assertRetryDestinationAvailable(value.destination);
+    const asset = fixedRetryAsset(value.contentItemId, value.sourceVersionId);
+    const input = fileConverterServerTool.validateInput({ contentItemId: value.contentItemId, conversionId: value.conversionId, profile: value.profile, folderId: value.destination.folderId }, { projectId: value.destination.projectId });
+    input.asset = asset;
+    // A stored null is an explicit root destination, never a request for defaults.
+    input.folderId = value.destination.folderId;
+    input.folderNameSnapshot = value.destination.folderId ? isFolderAvailable(value.destination.folderId, input.projectId ?? undefined)?.name ?? null : null;
+    assertRetryPayload(payload, fileConverterServerTool.encodeInputPayload(input));
+    return input;
+  },
   summarizeInput(input: FileConverterToolInput) { return `${input.asset.originalName} → ${fileConverterFormat(getAcceptedFileConversion(input.conversionId)!.target).extension.slice(1).toUpperCase()}`; },
   captureInputSnapshot(runId: string, input: FileConverterToolInput) { run(`INSERT INTO automation_run_inputs (run_id, ordinal, content_id, content_title_snapshot, file_version_id, file_name_snapshot, file_sha256_snapshot, file_byte_size_snapshot) VALUES (?, 0, ?, ?, ?, ?, ?, ?)`, runId, input.contentItemId, input.item.title, input.asset.versionId, input.asset.originalName, input.asset.sha256, input.asset.byteSize); },
-  async executeExternal(input: FileConverterToolInput, context: { runId: string; writePending: (payload: unknown) => void }): Promise<FileConverterToolOutput> {
+  async executeExternal(input: FileConverterToolInput, context: { runId: string; writePending: (payload: unknown) => void; assertRunning: () => void }): Promise<FileConverterToolOutput> {
     const conversion = getAcceptedFileConversion(input.conversionId)!; const target = fileConverterFormat(conversion.target);
     const result = await withFileConverterOutput({ invocationId: context.runId, sourcePath: managedFilePath(input.asset.storageKey), displayName: input.asset.originalName, declaredMediaType: input.asset.declaredMimeType, expectedSize: input.asset.byteSize, expectedSha256: input.asset.sha256, sourceFormat: input.sourceFormat, conversionId: input.conversionId, profile: input.profile }, async (output, response) => {
       context.writePending({ schemaVersion: 1, phase: "supplier_validated", output: { byteSize: output.byteSize, sha256: output.sha256, format: output.format }, supplier: supplierSnapshot(response) });
       const originalName = `${path.basename(input.asset.originalName, path.extname(input.asset.originalName))}${target.extension}`;
-      const contentId = await createFileContentItemFromStream({ body: Readable.toWeb(createReadStream(output.path)) as ReadableStream<Uint8Array>, originalName, mimeType: target.mediaType, expectedSize: output.byteSize, title: `${input.item.title} · ${target.formatId.toUpperCase()}`, projectId: input.projectId, folderId: input.folderId, idempotencyKey: `automation:${context.runId}:output:0` });
+      const contentId = await createFileContentItemFromStream({ body: Readable.toWeb(createReadStream(output.path)) as ReadableStream<Uint8Array>, originalName, mimeType: target.mediaType, expectedSize: output.byteSize, title: `${input.item.title} · ${target.formatId.toUpperCase()}`, projectId: input.projectId, folderId: input.folderId, idempotencyKey: `automation:${context.runId}:output:0`, beforeCommit: context.assertRunning });
       const created = getFileAssetForViewing(contentId); if (!created) throw new Error("file_converter_created_content_missing");
       return { schemaVersion: 1 as const, contentId, assetId: created.assetId, versionId: created.versionId, blobId: created.blobId, originalName: created.originalName, mimeType: created.declaredMimeType, byteSize: created.byteSize, sha256: created.sha256, previewable: conversion.previewable, supplier: supplierSnapshot(response) };
     });
@@ -58,7 +74,7 @@ export const fileConverterServerTool = {
   },
   encodeOutputPayload(output: FileConverterToolOutput) { return output; },
   summarizeOutput(output: FileConverterToolOutput) { return `已创建 ${getAvailableContentItemSummary(output.contentId)?.title ?? output.originalName}（${formatBytes(output.byteSize)}）`; },
-  mapError(error: unknown) { if (error instanceof FileConverterBusinessError) { const item = error.response.errors[0]!; return { code: item.code, message: hostFailureMessage(item.code) }; } if (error instanceof FileConverterProtocolError) return { code: error.code, message: "转换服务未能完成安全调用，未保存任何结果。" }; return { code: "host_file_converter_failed", message: "转换结果未能提交到资料库。" }; },
+  mapError(error: unknown) { if (error instanceof ExternalToolWorkspaceError) return { code: "host_workspace_unavailable", message: "工具临时工作目录不可用，请检查目录配置后重试。" }; if (error instanceof FileConverterBusinessError) { const item = error.response.errors[0]!; return { code: item.code, message: hostFailureMessage(item.code) }; } if (error instanceof FileConverterProtocolError) return { code: error.code, message: error.code === "host_dependency_unavailable" ? "所需转换依赖不可用，请检查安装或可执行路径配置后重试。" : "转换服务未能完成安全调用，未保存任何结果。" }; return { code: "host_file_converter_failed", message: "转换结果未能提交到资料库。" }; },
   getAvailability: getFileConverterAvailability,
   recoverInterruptedRun(candidate: { id: string; input_payload_json: string; output_payload_json: string | null }) {
     if (!candidate.output_payload_json) return null;

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { copyFile, mkdir, open, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, lstat, mkdir, open, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { backup, DatabaseSync } from "node:sqlite";
 import { backupsDirectory, db } from "@/platform/db/database";
@@ -10,6 +10,7 @@ import { uuidv7 } from "@/platform/shared/ids";
 
 type BlobRow = { storage_key: string; sha256: string; byte_size: number };
 type MigrationRow = { version: string; checksum: string };
+type BackupManifest = { formatVersion: 2; database: "app.sqlite"; blobs: BlobRow[]; migrations: MigrationRow[] };
 
 export async function createBackup() {
   return withDataWriterLease(() => withBlobGcBlocked(async () => {
@@ -55,6 +56,7 @@ export async function createBackup() {
       };
       await writeFile(path.join(incompleteDirectory, "manifest.json"), JSON.stringify(manifest, null, 2));
       await writeFile(path.join(incompleteDirectory, "complete"), "ok\n");
+      if (!await readVerifiedBackup(incompleteDirectory)) throw new Error("Backup verification failed.");
       await rename(incompleteDirectory, directory);
       return { directory, fileCount: blobs.length };
     } catch (error) {
@@ -78,17 +80,7 @@ export async function verifyCurrentFiles() {
 }
 
 export async function verifyBackup(directory: string) {
-  const manifest = await readManifest(directory);
-  if ((await readFile(path.join(directory, "complete"), "utf8")).trim() !== "ok") throw new Error("Backup is incomplete.");
-  const snapshot = new DatabaseSync(path.join(directory, manifest.database), { readOnly: true });
-  try { assertSnapshotIntegrity(snapshot); }
-  finally { snapshot.close(); }
-  for (const blob of manifest.blobs) {
-    assertBlobManifestEntry(blob);
-    const candidate = path.join(directory, "files", blob.storage_key);
-    if ((await stat(candidate).catch(() => null))?.size !== blob.byte_size || await hashFile(candidate).catch(() => "") !== blob.sha256) return false;
-  }
-  return true;
+  return Boolean(await readVerifiedBackup(directory));
 }
 
 /** Restore is deliberately offline-only and never overwrites an existing data directory. */
@@ -96,24 +88,31 @@ export async function restoreBackupToNewDataDirectory(directory: string, targetD
   const source = path.resolve(directory);
   const target = path.resolve(targetDataDirectory);
   if (source === target || isInside(source, target) || isInside(target, source)) throw new Error("Backup and restore target must be separate directories.");
-  if (await stat(target).then(() => true).catch(() => false)) throw new Error("Restore target already exists.");
-  if (!await verifyBackup(source)) throw new Error("Backup verification failed.");
-  const manifest = await readManifest(source);
+  if (await pathExists(target)) throw new Error("Restore target already exists.");
+  const verified = await readVerifiedBackup(source);
+  if (!verified) throw new Error("Backup verification failed.");
+  const { manifest, manifestText, databaseSha256 } = verified;
   const parent = path.dirname(target);
   const incomplete = path.join(parent, `.${path.basename(target)}.${uuidv7()}.restore-incomplete`);
-  await mkdir(path.join(incomplete, "files"), { recursive: true });
   try {
+    await mkdir(path.join(incomplete, "files"), { recursive: true });
     await copyFile(path.join(source, manifest.database), path.join(incomplete, "app.sqlite"));
     for (const blob of manifest.blobs) {
       assertBlobManifestEntry(blob);
       await copyFile(path.join(source, "files", blob.storage_key), path.join(incomplete, "files", blob.storage_key));
     }
-    const restored = new DatabaseSync(path.join(incomplete, "app.sqlite"), { readOnly: true });
-    try { assertSnapshotIntegrity(restored); } finally { restored.close(); }
-    for (const blob of manifest.blobs) {
-      if (await hashFile(path.join(incomplete, "files", blob.storage_key)) !== blob.sha256) throw new Error(`Restored blob verification failed: ${blob.storage_key}`);
-    }
+    if (await hasUncopiedWal(path.join(incomplete, "app.sqlite"))
+      || !snapshotMatchesManifest(path.join(incomplete, "app.sqlite"), manifest)
+      || await hashFile(path.join(incomplete, "app.sqlite")) !== databaseSha256
+      || !await filesMatchManifest(incomplete, manifest)) throw new Error("Restored backup verification failed.");
+    // The source must stay unchanged during copying. Never trust a second, different manifest.
+    if (await hasUncopiedWal(path.join(source, "app.sqlite"))
+      || await readFile(path.join(source, "manifest.json"), "utf8") !== manifestText
+      || await hashFile(path.join(source, "app.sqlite")) !== databaseSha256
+      || (await readFile(path.join(source, "complete"), "utf8")).trim() !== "ok"
+      || !await filesMatchManifest(source, manifest)) throw new Error("Backup changed during restore.");
     await writeFile(path.join(incomplete, "restored-from.json"), JSON.stringify({ source, restoredAt: new Date().toISOString(), formatVersion: manifest.formatVersion }, null, 2));
+    if (await pathExists(target)) throw new Error("Restore target already exists.");
     await rename(incomplete, target);
     return { directory: target, fileCount: manifest.blobs.length };
   } catch (error) {
@@ -122,16 +121,73 @@ export async function restoreBackupToNewDataDirectory(directory: string, targetD
   }
 }
 
-async function readManifest(directory: string) {
-  const manifest = JSON.parse(await readFile(path.join(directory, "manifest.json"), "utf8")) as {
-    formatVersion?: number; database?: string; blobs?: BlobRow[];
-  };
-  if (manifest.formatVersion !== 2 || manifest.database !== "app.sqlite" || !Array.isArray(manifest.blobs)) throw new Error("Unsupported backup manifest.");
-  return manifest as { formatVersion: 2; database: "app.sqlite"; blobs: BlobRow[] };
+async function readVerifiedBackup(directory: string) {
+  for (const name of ["manifest.json", "complete", "app.sqlite"]) {
+    // Backup directories are runtime data, never application source to bundle.
+    const info = await lstat(path.join(/* turbopackIgnore: true */ directory, name));
+    if (!info.isFile() || info.isSymbolicLink()) throw new Error("Unsafe backup file.");
+  }
+  const manifestText = await readFile(path.join(directory, "manifest.json"), "utf8");
+  const manifest = JSON.parse(manifestText) as BackupManifest | null;
+  if (!manifest || manifest.formatVersion !== 2 || manifest.database !== "app.sqlite"
+    || !Array.isArray(manifest.blobs) || !Array.isArray(manifest.migrations)) throw new Error("Unsupported backup manifest.");
+  for (const blob of manifest.blobs) assertBlobManifestEntry(blob);
+  for (const migration of manifest.migrations) {
+    if (!migration || typeof migration.version !== "string" || !migration.version
+      || typeof migration.checksum !== "string" || !/^[a-f0-9]{64}$/u.test(migration.checksum)) throw new Error("Unsafe backup migration manifest entry.");
+  }
+  if ((await readFile(path.join(directory, "complete"), "utf8")).trim() !== "ok") throw new Error("Backup is incomplete.");
+  const databasePath = path.join(directory, manifest.database);
+  // An offline backup must not depend on un-copied WAL transactions.
+  if (await hasUncopiedWal(databasePath)) return null;
+  const databaseSha256 = await hashFile(databasePath);
+  if (!snapshotMatchesManifest(databasePath, manifest) || !await filesMatchManifest(directory, manifest)) return null;
+  if (await hasUncopiedWal(databasePath) || await hashFile(databasePath) !== databaseSha256
+    || await readFile(path.join(directory, "manifest.json"), "utf8") !== manifestText) return null;
+  return { manifest, manifestText, databaseSha256 };
+}
+
+async function hasUncopiedWal(databasePath: string) {
+  try { return (await lstat(`${databasePath}-wal`)).size > 0; }
+  catch (error) { if (error instanceof Error && "code" in error && error.code === "ENOENT") return false; throw error; }
+}
+
+function snapshotMatchesManifest(databasePath: string, manifest: BackupManifest) {
+  const snapshot = new DatabaseSync(databasePath, { readOnly: true });
+  try {
+    assertSnapshotIntegrity(snapshot);
+    const referenced = snapshot.prepare(`SELECT DISTINCT fb.storage_key, fb.sha256, fb.byte_size
+      FROM file_versions fv JOIN file_blobs fb ON fb.id = fv.blob_id ORDER BY fb.storage_key`).all() as BlobRow[];
+    const migrations = snapshot.prepare("SELECT version, checksum FROM schema_migrations ORDER BY version").all() as MigrationRow[];
+    const listed = manifest.blobs.map(({ storage_key, sha256, byte_size }) => ({ storage_key, sha256, byte_size })).sort((a, b) => a.storage_key.localeCompare(b.storage_key));
+    const listedMigrations = manifest.migrations.map(({ version, checksum }) => ({ version, checksum })).sort((a, b) => a.version.localeCompare(b.version));
+    return JSON.stringify(referenced) === JSON.stringify(listed) && JSON.stringify(migrations) === JSON.stringify(listedMigrations);
+  } finally { snapshot.close(); }
+}
+
+async function filesMatchManifest(directory: string, manifest: BackupManifest) {
+  const files = path.join(directory, "files");
+  const info = await lstat(files).catch(() => null);
+  if (!info?.isDirectory() || info.isSymbolicLink()) return false;
+  const entries = await readdir(files);
+  const expected = manifest.blobs.map(blob => blob.storage_key).sort();
+  if (JSON.stringify(entries.sort()) !== JSON.stringify(expected)) return false;
+  for (const blob of manifest.blobs) {
+    const candidate = path.join(files, blob.storage_key);
+    const details = await lstat(candidate).catch(() => null);
+    if (!details?.isFile() || details.isSymbolicLink() || details.size !== blob.byte_size
+      || await hashFile(candidate).catch(() => "") !== blob.sha256) return false;
+  }
+  return true;
+}
+
+async function pathExists(candidate: string) {
+  try { await lstat(candidate); return true; }
+  catch (error) { if (error instanceof Error && "code" in error && error.code === "ENOENT") return false; throw error; }
 }
 
 function assertBlobManifestEntry(blob: BlobRow) {
-  if (!/^[a-f0-9]{64}$/.test(blob.storage_key) || blob.storage_key !== blob.sha256 || !Number.isSafeInteger(blob.byte_size) || blob.byte_size < 0) throw new Error("Unsafe backup blob manifest entry.");
+  if (!blob || typeof blob.storage_key !== "string" || !/^[a-f0-9]{64}$/.test(blob.storage_key) || blob.storage_key !== blob.sha256 || !Number.isSafeInteger(blob.byte_size) || blob.byte_size < 0) throw new Error("Unsafe backup blob manifest entry.");
 }
 
 function isInside(parent: string, candidate: string) {

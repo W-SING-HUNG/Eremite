@@ -245,4 +245,5 @@ try {
     assert.deepEqual(database.all("PRAGMA foreign_key_check"), []);
     console.log("Tool Retry contract PASS: independent lineage, concurrent dedup, stale/version/policy/destination guards, canonical PDF order, legacy rejection, every receipt state, Host validation and both stale-executor commit races.");
   } finally { fc.executeExternal = fcExecute; pdf.executeExternal = pdfExecute; }
+  await (await import("./tool-run-retry-deep-folders.test.mjs")).checkDeepFolderRetry(root);
 } finally { database?.db().close(); await rm(root, { recursive: true, force: true }); }

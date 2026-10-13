@@ -2,7 +2,7 @@
 
 This source candidate retains package version 1.6.1. The published v1.6.1 tag remains unchanged. Canonical source: https://github.com/W-SING-HUNG/Eremite.
 
-Last Verified Date: **2026-10-12 (Asia/Shanghai; source-boundary review)**
+Last Verified Date: **2026-10-13 (Asia/Shanghai; source-boundary review)**
 
 ## Current Version
 
@@ -15,8 +15,8 @@ Last Verified Date: **2026-10-12 (Asia/Shanghai; source-boundary review)**
 
 | Entry | Status | Boundary |
 | --- | --- | --- |
-| file-converter-root-destination | RESOLVED | Only omitted/undefined defaults to the source Folder. Explicit null/empty selects Project root; Retry freezes that destination. |
-| pdf-tools-root-destination | RESOLVED | Only omitted/undefined defaults to the first source Folder. Explicit null/empty selects Project root for all five operations and split outputs; Retry freezes it. |
+| file-converter-root-destination | RESOLVED | Only omitted/undefined defaults to the source Folder. Explicit null/empty selects Project root. New Retry evidence v2 freezes destination identity and a fixed 64-character SHA-256 over ordered ancestor IDs/names/parents/Projects; historical v1 breadcrumbs remain revalidated without rewriting parent/child input bytes. |
+| pdf-tools-root-destination | RESOLVED | Only omitted/undefined defaults to the first source Folder. Explicit null/empty selects Project root for all five operations and split outputs. Retry uses the same bounded v2 path digest and compatible v1 validation; the 65,536-character input limit remains unchanged. |
 
 Retry creates a new Run and output namespace, preserves parent history and fixed source versions, rejects changed policy/destination, and checks Run state before File Lifecycle commit. Failed single-file creation cleans only a newly promoted blob confirmed absent from blob metadata under the writer lease; pre-existing/shared bytes and uncertain references are preserved. Retry Workspace and Retry UI changes require public state review. Backup verification compares the complete retained blob set, migration checksums and actual hashes, and rejects uncopied non-empty WAL. Original versions remain immutable.
 
@@ -52,11 +52,21 @@ Publication uses accepted clean export, public sync branch, PR, required Verify,
 
 ## Current Next Step
 
-Fresh candidate-bound automated gates and independent acceptance are separate. Independent review of this source candidate is NOT VERIFIED. Existing historical acceptance does not prove this candidate, whole-product absence of defects, real external Provider recovery or screenshot/pixel acceptance.
+Fresh candidate-bound automated gates and independent acceptance are separate. Independent review of this bounded Retry-evidence candidate is NOT VERIFIED. Completed acceptance below applies only to its identified historical manifest, not to these new modifications, whole-product absence of defects, real external Provider recovery or screenshot/pixel acceptance.
 
 ## In Progress
 
 Candidate validation results are provided beside the export manifest, outside the public source tree. They are not GitHub CI evidence.
+
+## Historical accepted candidate and PR evidence — 2026-10-13
+
+| Evidence | Status | Exact scope |
+| --- | --- | --- |
+| Independent candidate acceptance | PASS | Accepted manifest SHA-256 `aa1c95edf1eef3c30154c56b2342c50716275e73f18363f5f224710408abc74e`, before the bounded Retry-evidence changes in this source tree. |
+| Current public PR CI checkpoint | PASS | PR #2 Head `aaa1ff108c8f07a7e13c8932f8ee66fcb94a0528`, strict Verify run [38354596332](https://github.com/W-SING-HUNG/Eremite/actions/runs/38354596332); this does not verify the subsequently modified candidate. |
+| Public main integration and publication | NOT PERFORMED | Last observed public main `51826c005f156dd30c534d342dd3c016f2393e9d` does not contain that PR Head; published Host v1.6.1 remains unchanged. Candidate acceptance and PR CI do not constitute a merge, tag or release. |
+
+This dated checkpoint records completed acceptance and observed PR CI separately. The revised candidate's independent acceptance remains NOT VERIFIED, and its GitHub CI has not been executed.
 
 ## Known Risks
 

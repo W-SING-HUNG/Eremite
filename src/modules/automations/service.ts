@@ -188,7 +188,8 @@ export async function executeExternalTool(
     const retry = input.retryOfRunId ? requireRetryParent(input.retryOfRunId) : null;
     if (retry && retry.parent.target_id !== metadata.id) throw new ToolRetryError("retry_stale_tool");
     const validated = retry ? retry.validated : tool.validateInput(input.rawInput, { projectId: input.projectId });
-    const inputPayloadJson = encodePayload(tool.encodeInputPayload(validated)); const inputSummary = tool.summarizeInput(validated);
+    // Retry was fully revalidated above; preserve the parent's exact historical encoding (v1 or v2).
+    const inputPayloadJson = encodePayload(tool.encodeInputPayload(validated), retry?.parent.input_payload_json); const inputSummary = tool.summarizeInput(validated);
     const projectNameSnapshot = validated.projectId ? getProject(validated.projectId)?.name ?? null : null;
     const existing = one<AutomationRun>("SELECT * FROM automation_runs WHERE operation_id = ?", operationId);
     if (existing) {
@@ -261,8 +262,8 @@ function normalizeOperationId(value: string) {
   return operationId.toLowerCase();
 }
 
-function encodePayload(payload: unknown) {
-  const json = JSON.stringify(payload);
+function encodePayload(payload: unknown, frozenJson?: string) {
+  const json = frozenJson ?? JSON.stringify(payload);
   if (!json || json.length > 65_536) throw new AutomationContextError("input_unavailable");
   return json;
 }

@@ -56,7 +56,7 @@ PR #2's final candidate independent acceptance and public maintenance integratio
 
 ## In Progress
 
-No candidate acceptance or public synchronization remains pending for the delivered maintenance source. Known Risks remain open; future candidates require their own source-bound validation and acceptance rather than inheriting the completed historical PASS below.
+PR #2's final product candidate completed independent acceptance and public integration for the manifest and events below. Those PASS records do not cover later documentation bytes. Documentation corrections establish summary accuracy through governance and CI; future product candidates require their own source-bound validation and acceptance. Known Risks remain open.
 
 ## Historical PR #2 acceptance and integration — 2026-10-13
 

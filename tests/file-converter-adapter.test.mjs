@@ -19,7 +19,7 @@ assert.doesNotMatch(outputValidationSource, /@\/modules\/viewer\//u, "File Conve
 assert.doesNotMatch(platformInspectionSources.join("\n"), /@\/modules\//u, "Platform file inspection must not depend on product modules");
 
 const installed = await resolveInstalledFileConverter();
-assert.equal(installed.packageVersion, "1.1.2");
+assert.equal(installed.packageVersion, "1.1.3");
 assert.ok(installed.cliPath.endsWith(path.join("dist", "cli", "index.js")));
 assert.ok(installed.nativeHelperPath.endsWith("fc-movefile.exe"));
 
@@ -35,6 +35,22 @@ try {
   const source = path.join(root, "source.png");
   await sharp({ create: { width: 3, height: 2, channels: 4, background: { r: 40, g: 100, b: 180, alpha: 0.7 } } }).png().toFile(source);
   const bytes = await readFile(source); const sha256 = createHash("sha256").update(bytes).digest("hex");
+  const helperBytes = await readFile(installed.nativeHelperPath);
+  const alteredHelper = Buffer.from(helperBytes); alteredHelper[alteredHelper.length - 1] ^= 1;
+  try {
+    await writeFile(installed.nativeHelperPath, alteredHelper);
+    await assert.rejects(resolveInstalledFileConverter(true), /file_converter_native_helper_drift/u, "runtime rejects tampered helper bytes against the pinned artifact digest");
+    await writeFile(installed.nativeHelperPath, helperBytes);
+    await resolveInstalledFileConverter(true); // Cache a valid installation before replacing bytes again.
+    await writeFile(installed.nativeHelperPath, alteredHelper);
+    await assert.rejects(withFileConverterOutput({ invocationId: uuidv7(), sourcePath: source, displayName: "source.png", declaredMediaType: "image/png", expectedSize: bytes.length, expectedSha256: sha256, sourceFormat: "png", conversionId: "png-to-jpeg" }, async () => { throw new Error("tampered helper must never reach output consumption"); }), /file_converter_native_helper_drift/u, "actual invocation repeats verification even after an earlier valid cache");
+    assert.deepEqual(await readFile(source), bytes);
+    assert.deepEqual((await readdir(process.env.EREMITE_TOOL_WORKSPACE_DIR ?? tmpdir())).filter(name => name.startsWith("eremite-file-converter-")), [], "reject before workspace and Supplier execution");
+  } finally {
+    await writeFile(installed.nativeHelperPath, helperBytes);
+    await resolveInstalledFileConverter(true);
+    assert.deepEqual(await readFile(installed.nativeHelperPath), helperBytes);
+  }
   const result = await withFileConverterOutput({
     invocationId: uuidv7(), sourcePath: source, displayName: "测试图像.png", declaredMediaType: "image/png",
     expectedSize: bytes.length, expectedSha256: sha256, sourceFormat: "png", conversionId: "png-to-jpeg", profile: "balanced",
@@ -45,7 +61,7 @@ try {
     return converted.length;
   });
   assert.equal(result.response.status, "succeeded");
-  assert.equal(result.response.coreVersion, "1.1.2");
+  assert.equal(result.response.coreVersion, "1.1.3");
   if (result.response.status === "succeeded") assert.ok(result.value > 0);
 
   const validDocx = await makeDocxFixture("File Converter validation");

@@ -15,7 +15,7 @@ the files actually distributed, including framework and platform optional packag
 
 | Component | Locked version | Declared license |
 | --- | --- | --- |
-| Next (`next`) | 16.3.6 | MIT |
+| Next (`next`) | 16.3.8 | MIT |
 | React / React DOM | 18.3.1 | MIT |
 | DOMPurify | 3.4.16 | MPL-2.0 OR Apache-2.0 |
 | PDF.js (`pdfjs-dist`) | 6.2.108 | Apache-2.0 |
@@ -37,7 +37,7 @@ in any public source/build distribution must also be recorded.
 
 | Artifact currently in Host source | Current package metadata | Public status |
 | --- | --- | --- |
-| `vendor/file-converter/file-converter-core-1.1.2.tgz` | `private: true` prevents accidental npm publication; Apache-2.0 | Host-vendored runtime archive; canonical source: [Eremite-File-Converter-Core](https://github.com/W-SING-HUNG/Eremite-File-Converter-Core) |
+| `vendor/file-converter/file-converter-core-1.1.3.tgz` | `private: true` prevents accidental npm publication; Apache-2.0 | Host-vendored runtime archive; canonical source: [Eremite-File-Converter-Core](https://github.com/W-SING-HUNG/Eremite-File-Converter-Core) |
 | `vendor/pdf-tools/pdf-tools-core-1.0.0-rc5.tgz` | rc5 prerelease; `private: true` prevents accidental npm publication; Apache-2.0 | Host-vendored runtime archive; canonical source: [Eremite-PDF-Tools-Core](https://github.com/W-SING-HUNG/Eremite-PDF-Tools-Core) |
 
 Supplier source repositories remain independent. The Host license does not
@@ -49,8 +49,8 @@ in NOTICE. Security reporting instructions are in SECURITY.md.
 
 | Component | Current distribution boundary | License / distribution note |
 | --- | --- | --- |
-| Sharp 0.35.4 | npm dependency of File Converter (also used by Next); consumer obtains dependencies from npm | Apache-2.0; license applies to the npm-installed dependency |
-| libvips / Sharp native closure | Windows `@img/sharp-win32-x64@0.35.4` is obtained from npm by the consumer | package declares Apache-2.0 AND LGPL-3.0-or-later; preserve the installed package licenses and notices |
+| Sharp 0.35.5 | npm dependency of File Converter (also used by Next); consumer obtains dependencies from npm | Apache-2.0; license applies to the npm-installed dependency |
+| libvips / Sharp native closure | Windows `@img/sharp-win32-x64@0.35.5` is obtained from npm by the consumer | package declares Apache-2.0 AND LGPL-3.0-or-later; preserve the installed package licenses and notices |
 | fc-movefile.exe | bundled in File Converter `dist/native/bin/` | owner-controlled helper; attribution in NOTICE; helper source and build script retained in the File Converter source root |
 | qpdf 12.4.0 | EXTERNAL PREREQUISITE on PATH; not in rc5 tgz or Host package | Apache-2.0 per upstream distribution; independently installed/licensed by user |
 | Microsoft VC runtime DLLs | NOT DISTRIBUTED by rc5; prerequisites of independently obtained external qpdf distribution | Microsoft license terms belong to that external distribution; Host makes no redistribution claim |
@@ -84,3 +84,7 @@ Retain upstream texts and attributions for components actually distributed.
 Update this inventory whenever the lockfile or vendored artifact bytes change.
 Project attribution is in NOTICE. See [distribution baseline](docs/public-baseline.md)
 and [SECURITY.md](SECURITY.md).
+
+## File Converter candidate provenance
+
+The Host-vendored 1.1.3 archive is licensed Apache-2.0 and preserves LICENSE, NOTICE and THIRD-PARTY-NOTICES.md. Its SHA-256 is `566d03e5850d0fd966482f55028f136d809ed902801ecdad097abbc1ad2ba1c6`. Its corresponding source snapshot and hashes accompany the export manifest. Public Supplier main/tag 1.1.2 does not identify this 1.1.3 archive. The sole owner-controlled native helper remains inside this archive; Sharp/libvips native dependencies are installed from npm and are not bundled in the source export.

@@ -30,3 +30,12 @@ Eremite is a local-first, single-user personal digital foundation. Prefer small,
 ## Deliberate non-goals
 
 No Docker requirement, PostgreSQL, API service, background worker, event bus, plugins, general external-integration platform, multi-user features, or autonomous agents in V1. AI provider calls are explicit, request-bound and must not become an agent loop.
+
+## Project-state maintenance
+
+- Before implementation, inspect current Git/GitHub, code, contracts and tests. `docs/PUBLIC-STATE.md` is the sole manually maintained state summary; its fixed entries only expose a stable reading interface.
+- Update current state in the same PR for user-visible capability changes/removal, resolved BLOCKER/FOLLOW-UP, architecture/Contract, Tool/Provider/version boundaries, acceptance or publication changes. Describe the target code tree; keep transient commit/push/PR/CI/merge status in PR descriptions and dated evidence.
+- Host/Supplier version boundaries, capability lists, Supplier artifacts and canonical/typed Contract changes require a substantive update to their corresponding current entry; changed versions must appear as actual entry values. Dates, history or unrelated current entries cannot satisfy this. Ordinary monitored changes may explain no state update in the PR template; CI/state-checker/tests always need a concrete governance review explanation without forcing a state edit. Reviewers judge natural-language truth and unmonitored state-impact.
+- Run `npm.cmd run check:project-state` and `npm.cmd run verify`. Local PR inspection accepts `--base <ref> --head <ref> --pr-body-file <file>` after a normal fetch. CI checks only encoded document facts/synchronization; code and behavior tests prove capabilities.
+- Review the current summary against the implementation and dated evidence. Never claim unexecuted acceptance: use NOT VERIFIED or the accurate incomplete status. Preserve dated historical evidence and separate private package/public release boundaries.
+- After authorized integration, check actual main and its CI through Git/GitHub. Do not add a post-merge documentation repair to update transient workflow state; never infer commit/push/merge/release authorization from this document.

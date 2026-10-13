@@ -1,7 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ComponentType, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type RefObject } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { retryAutomationToolAction } from "@/app/actions";
+import { automationRetryConfirmation, automationRetryMessage } from "@/app/_lib/automation-retry";
+import { MutationForm } from "@/app/_components/ui/mutation-form";
 import { CheckCircle2, CircleAlert, Clock3, History, Trash2, WandSparkles, Wrench, X } from "lucide-react";
 import { CommandTrigger } from "@/app/_components/workspace-shell";
 import { getClientTool } from "@/app/_components/automations/tool-ui-registry";
@@ -64,6 +68,7 @@ export function AutomationsWorkspace({
     }));
   };
   const openRun = (runId: string) => {
+    setStatusFilter("all");
     setView("runs"); setSelectedRunId(runId);
     router.replace(`${basePath}${basePath.includes("?") ? "&" : "?"}view=runs&selected=${runId}`);
     router.refresh();
@@ -88,7 +93,7 @@ export function AutomationsWorkspace({
         <div className="run-filterbar" role="group" aria-label="运行状态筛选">{(["all", "completed", "failed", "running"] as const).map((status) => <button className={statusFilter === status ? "selected" : ""} aria-pressed={statusFilter === status} onClick={() => setStatusFilter(status)} key={status}>{status === "all" ? "全部" : runLabel[status]}</button>)}</div>
         {visibleRuns.length === 0 ? <div className="panel-empty"><History size={28} /><strong>还没有运行记录</strong><span>运行工具后，结果会保留在这里。</span></div> : <div className="run-history" role="list">{visibleRuns.map((run) => <button data-run-id={run.id} role="listitem" key={run.id} className={run.id === selectedRunId ? "run-row selected" : "run-row"} aria-pressed={run.id === selectedRunId} onClick={(event) => { runTriggerRef.current = event.currentTarget; selectRun(run.id); }}><span className={`run-dot ${run.status}`} /><span><strong>{run.target_name_snapshot}</strong><small>{run.output_summary ?? run.input_summary}</small></span><span><time>{new Date(run.created_at).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</time><small>{runLabel[run.status]}</small></span></button>)}</div>}
       </section>
-      {selectedRun && <RunInspector run={selectedRun} tags={tagsByRun[selectedRun.id] ?? []} availableTags={availableTags} returnTo={returnTo} readOnly={readOnly} modal={narrowInspector} triggerRef={runTriggerRef} onClose={closeRun} onTrash={() => setTrashOpen(true)} />}
+      {selectedRun && <RunInspector run={selectedRun} tags={tagsByRun[selectedRun.id] ?? []} availableTags={availableTags} returnTo={returnTo} readOnly={readOnly} modal={narrowInspector} triggerRef={runTriggerRef} onClose={closeRun} onTrash={() => setTrashOpen(true)} onRetryRun={openRun} />}
     </div>}
     <AlertDialog open={!readOnly && trashOpen && Boolean(selectedRun)} onClose={() => setTrashOpen(false)} title="将运行记录移到回收站？" description="记录会从全局与专案视图隐藏，执行来源仍作为历史事实保留。" className="danger-dialog">{selectedRun && <form action={trashAutomationAction} className="drawer-form"><input type="hidden" name="id" value={selectedRun.id} /><input type="hidden" name="revision" value={selectedRun.revision} /><input type="hidden" name="returnTo" value={basePath} /><p className="confirmation-name">{selectedRun.target_name_snapshot}</p><div className="dialog-actions"><button data-dialog-initial-focus className="quiet-button" type="button" onClick={() => setTrashOpen(false)}>取消</button><button className="danger-button"><Trash2 size={15} />移到回收站</button></div></form>}</AlertDialog>
   </section>;
@@ -101,15 +106,33 @@ function ToolLauncher({ tool, contextProjectId, readOnly, onRun }: { tool: ToolM
   return <><header className="tool-launcher-header"><span><WandSparkles size={19} /></span><div><small>{tool.category}</small><h2>{tool.name}</h2><p>{tool.description}</p></div></header><Launcher contextProjectId={contextProjectId} readOnly={readOnly} onRun={onRun} /></>;
 }
 
-function RunInspector({ run, tags, availableTags, returnTo, readOnly, modal, triggerRef, onClose, onTrash }: { run: AutomationRun; tags: Tag[]; availableTags: Tag[]; returnTo: string; readOnly: boolean; modal: boolean; triggerRef: RefObject<HTMLButtonElement | null>; onClose: () => void; onTrash: () => void }) {
+function RunInspector({ run, tags, availableTags, returnTo, readOnly, modal, triggerRef, onClose, onTrash, onRetryRun }: { run: AutomationRun; tags: Tag[]; availableTags: Tag[]; returnTo: string; readOnly: boolean; modal: boolean; triggerRef: RefObject<HTMLButtonElement | null>; onClose: () => void; onTrash: () => void; onRetryRun: (id: string) => void }) {
+  const [retryOpen, setRetryOpen] = useState(false);
+  const retryTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const retryWasOpen = useRef(false);
+  useLayoutEffect(() => {
+    const wasOpen = retryWasOpen.current;
+    retryWasOpen.current = retryOpen;
+    // Restore after the dialog unmounts, even when a hidden webview pauses frames.
+    if (wasOpen && !retryOpen) retryTriggerRef.current?.focus();
+  }, [retryOpen]);
+  useEffect(() => setRetryOpen(false), [run.id]);
+  const confirmation = automationRetryConfirmation(run.input_payload_json);
   const duration = run.completed_at ? Math.max(0, new Date(run.completed_at).getTime() - new Date(run.created_at).getTime()) : null;
   const resultRegistration = getClientTool(run.target_id);
   const ResultRenderer = resultRegistration && "ResultRenderer" in resultRegistration ? resultRegistration.ResultRenderer as ComponentType<{ run: AutomationRun }> : undefined;
-  return <ResponsiveInspector label="运行详情" className="run-inspector" modal={modal} triggerRef={triggerRef} onClose={onClose}>
+  return <><ResponsiveInspector label="运行详情" className="run-inspector" modal={modal && !retryOpen} triggerRef={triggerRef} onClose={onClose}>
     <header><div><span className={`run-state ${run.status}`}>{run.status === "failed" ? <CircleAlert size={15} /> : run.status === "completed" ? <CheckCircle2 size={15} /> : <Clock3 size={15} />}{runLabel[run.status]}</span><h2>{run.target_name_snapshot}</h2></div><button data-run-inspector-initial-focus className="detail-close" type="button" onClick={onClose} aria-label="关闭详情"><X size={18} /></button></header>
     <section><h3>结果</h3>{ResultRenderer && run.status === "completed" ? <ResultRenderer run={run} /> : <p className={run.status === "failed" ? "run-error-copy" : "run-result-copy"}>{run.error_message ?? run.output_summary ?? "正在执行…"}</p>}</section>
+    {run.retry_of_run_id && <p>{run.retry?.parentTrashed ? <>重试自一次失败运行 · 原记录已移到<Link href="/trash">回收站</Link></> : <Link href={`/automations?view=runs&selected=${encodeURIComponent(run.retry_of_run_id)}`}>重试自一次失败运行 · 查看原记录</Link>}</p>}
+    {run.retry?.childRunId && <p>{run.retry.childTrashed ? <>重试记录已移到<Link href="/trash">回收站</Link></> : <Link href={`/automations?view=runs&selected=${encodeURIComponent(run.retry.childRunId)}`}>查看重试运行</Link>}</p>}
+    {!readOnly && run.status === "failed" && !run.retry?.childRunId && <section>{run.retry?.allowed && confirmation ? <button ref={retryTriggerRef} className="primary-button" type="button" onClick={() => setRetryOpen(true)}>重试</button> : <p>{automationRetryMessage(run.retry?.reason ?? null)}</p>}</section>}
     <section><h3>运行信息</h3><dl className="run-facts"><div><dt>输入</dt><dd>{run.input_summary}</dd></div><div><dt>运行时专案</dt><dd>{run.project_name_snapshot ?? "未归入专案"}</dd></div><div><dt>开始</dt><dd>{new Date(run.created_at).toLocaleString("zh-CN")}</dd></div>{duration !== null && <div><dt>耗时</dt><dd>{duration < 1000 ? "不足 1 秒" : `${Math.round(duration / 1000)} 秒`}</dd></div>}<div><dt>版本</dt><dd>v{run.target_version}</dd></div></dl></section>
     <TagPicker type="automation_run" objectId={run.id} assigned={tags} available={availableTags} returnTo={returnTo} readOnly={readOnly} />
     {!readOnly && <button className="quiet-button danger-text" type="button" onClick={onTrash}><Trash2 size={14} />移到回收站</button>}
-  </ResponsiveInspector>;
+  </ResponsiveInspector><AlertDialog open={retryOpen && !readOnly} triggerRef={retryTriggerRef} onClose={() => setRetryOpen(false)} title="按原输入重试？" description="将创建新的运行记录，保留这次失败记录。使用原文件版本、原参数和原输出位置。">
+    <MutationForm action={retryAutomationToolAction} className="drawer-form" onSuccess={({ objectId }) => { setRetryOpen(false); onRetryRun(objectId); }}>
+      {({ pending }) => <><input type="hidden" name="runId" value={run.id} />{confirmation && <dl className="run-facts"><div><dt>来源（原顺序）</dt><dd>{confirmation.sourceNames}</dd></div><div><dt>参数</dt><dd>{confirmation.parameters}</dd></div><div><dt>输出位置</dt><dd>{confirmation.location}</dd></div></dl>}<div className="dialog-actions"><button data-dialog-initial-focus={!pending || undefined} className="quiet-button" type="button" disabled={pending} onClick={() => setRetryOpen(false)}>返回</button><button className="primary-button" disabled={pending}>{pending ? "正在重试…" : "确认重试"}</button></div></>}
+    </MutationForm>
+  </AlertDialog></>;
 }

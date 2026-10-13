@@ -9,7 +9,7 @@ Before upgrading the application, create one backup and keep it outside the devi
 ## Restore
 
 1. Stop every Eremite process. Restore is offline-only.
-2. Call `restoreBackupToNewDataDirectory(backupDirectory, newDataDirectory)` from a maintenance script. It refuses an existing target, validates the complete marker, SQLite integrity/FKs, manifest paths, sizes and every SHA-256 before atomically publishing the new directory.
+2. Call `restoreBackupToNewDataDirectory(backupDirectory, newDataDirectory)` from a maintenance script. It refuses an existing target and validates the complete marker, SQLite integrity/FKs, exact manifest/database retained-blob and migration sets, actual files, sizes and every SHA-256. It pins the validated manifest and database digest, rejects source changes, un-copied WAL transactions or inconsistent copied data, and verifies the staged restore before publishing the new directory. Failed restores remove their incomplete staging directory and do not publish a formal restore target.
 3. Keep the old `data/` unchanged. Rename it to a dated fallback, then rename the verified new directory to `data/`.
 4. Start Eremite and check that no integrity warning appears.
 5. Open current and historical file versions, a deep Folder path, an Action source and an Automation run snapshot.

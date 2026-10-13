@@ -1,4 +1,4 @@
-export type MutationErrorCode = "conflict" | "invalid_input" | "not_found" | "unavailable" | "blocked";
+export type MutationErrorCode = "conflict" | "invalid_input" | "not_found" | "unavailable" | "blocked" | "retry_history_required";
 
 export type MutationFailure = { ok: false; code: MutationErrorCode; message: string };
 
@@ -12,6 +12,8 @@ export function mutationSuccess<T>(value: T): MutationResult<T> {
 
 export function mutationErrorMessage(code: MutationErrorCode) {
   switch (code) {
+    case "retry_history_required":
+      return "这条记录属于重试历史，只能移到回收站，不能永久删除。";
     case "conflict":
       return "这项内容已在其他位置更新。请载入最新内容后再试。";
     case "invalid_input":
@@ -32,5 +34,5 @@ export function mutationNoticeMessage(code: string) {
 }
 
 function isMutationErrorCode(code: string): code is MutationErrorCode {
-  return ["conflict", "invalid_input", "not_found", "unavailable", "blocked"].includes(code);
+  return ["conflict", "invalid_input", "not_found", "unavailable", "blocked", "retry_history_required"].includes(code);
 }

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { acceptDraftAction, createAction, replaceActionContentItems, updateActionDetails, updateActionStatus, type ActionPriority, type ActionStatus } from "@/modules/actions/service";
-import { executeExternalTool, executeTool } from "@/modules/automations/service";
+import { executeExternalTool, executeTool, retryExternalTool } from "@/modules/automations/service";
 import { FILE_CONVERTER_TOOL_ID, PDF_TOOLS_TOOL_ID } from "@/modules/automations/tools/catalog";
 import { reconcileInterruptedAutomationRuns } from "@/modules/automations/reconciliation";
 import { createLinkContentItem, updateContentItem, type InboxStatus } from "@/modules/inbox/service";
@@ -208,7 +208,7 @@ export async function executeAutomationToolAction(formData: FormData) {
     const toolId = value(formData, "toolId");
     const common = { operationId: value(formData, "operationId"), toolId, projectId: formData.has("projectId") ? value(formData, "projectId") || null : undefined };
     const result = toolId === FILE_CONVERTER_TOOL_ID
-      ? await executeExternalTool({ ...common, rawInput: { contentItemId: value(formData, "contentItemId"), conversionId: value(formData, "conversionId"), profile: value(formData, "profile"), folderId: value(formData, "folderId") || null } })
+      ? await executeExternalTool({ ...common, rawInput: { contentItemId: value(formData, "contentItemId"), conversionId: value(formData, "conversionId"), profile: value(formData, "profile"), folderId: formData.has("folderId") ? value(formData, "folderId") || null : undefined } })
       : toolId === PDF_TOOLS_TOOL_ID
         ? await executeExternalTool({ ...common, rawInput: {
           operation: value(formData, "operation"),
@@ -218,7 +218,7 @@ export async function executeAutomationToolAction(formData: FormData) {
           rotateAngle: value(formData, "rotateAngle"),
           rotateMode: value(formData, "rotateMode"),
           pageOrder: value(formData, "pageOrder"),
-          folderId: value(formData, "folderId") || null,
+          folderId: formData.has("folderId") ? value(formData, "folderId") || null : undefined,
         } })
         : executeTool({ ...common, rawInput: { contentItemIds: formData.getAll("contentItemIds").map(String) } });
     revalidateWorkspace();
@@ -226,6 +226,16 @@ export async function executeAutomationToolAction(formData: FormData) {
   } catch (error) {
     return mutationFailure(error);
   }
+}
+
+export async function retryAutomationToolAction(formData: FormData) {
+  await requireAuthorized();
+  try {
+    reconcileInterruptedAutomationRuns();
+    const result = await retryExternalTool(value(formData, "runId"));
+    revalidateWorkspace();
+    return mutationSuccess({ objectId: result.runId, reused: result.reused, status: result.status });
+  } catch (error) { return mutationFailure(error); }
 }
 
 export async function backupAction() {

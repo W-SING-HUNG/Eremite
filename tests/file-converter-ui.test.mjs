@@ -6,9 +6,15 @@ const result = await readFile(new URL("../src/app/_components/automations/file-c
 const contract = JSON.parse(await readFile(new URL("../src/modules/automations/tools/file-converter/canonical-tool-contract-v1.1.json", import.meta.url), "utf8"));
 const workspace = await readFile(new URL("../src/app/_components/automations-workspace.tsx", import.meta.url), "utf8");
 const styles = await readFile(new URL("../src/app/styles.css", import.meta.url), "utf8");
+const actions = await readFile(new URL("../src/app/actions.ts", import.meta.url), "utf8");
 
 assert.match(launcher, /contentItemId/); assert.match(launcher, /conversionId/); assert.match(launcher, /folderId/); assert.match(launcher, /未归入专案/);
+assert.match(launcher, /setFolderId\(item\.project_id \? item\.folder_id \?\? "" : ""\)/u, "Launcher initially preserves the source location");
+assert.match(launcher, /value: "", label: "专案根目录"/u, "root is an explicit empty option");
+assert.match(actions, /toolId === FILE_CONVERTER_TOOL_ID\s*\?[^\n]*folderId: formData\.has\("folderId"\) \? value\(formData, "folderId"\) \|\| null : undefined/u, "File Converter Action preserves omitted vs explicit root FormData");
 assert.match(launcher, /dependencyUnknown/); assert.match(launcher, /正在转换/); assert.doesNotMatch(launcher, /cancel|取消转换/iu);
+assert.match(launcher, /type="hidden" name="profile" value=\{profile\}/u);
+assert.doesNotMatch(launcher, /Select name="profile"|high_quality|lossless|高质量|无损/u, "Launcher does not offer unsupported quality choices");
 assert.match(result, /打开查看器/); assert.match(result, /在资料库中显示/); assert.match(result, /下载/); assert.match(result, /暂不支持此格式/);
 for (const warningCode of contract.$defs.warning.properties.code.enum) assert.match(result, new RegExp(warningCode));
 assert.doesNotMatch(result, /warningLabels\[code\]\s*\?\?\s*code/u);

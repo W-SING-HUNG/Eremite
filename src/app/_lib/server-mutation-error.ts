@@ -6,6 +6,8 @@ import { ProjectError } from "@/modules/projects/service";
 import { TagError } from "@/modules/tags/service";
 import { mutationErrorMessage, type MutationErrorCode, type MutationFailure } from "@/app/_lib/mutation-result";
 import { InboxProcessingError } from "@/app/_services/inbox-processing";
+import { ToolRetryError } from "@/modules/automations/tools/retry-snapshot";
+import { automationRetryMessage } from "@/app/_lib/automation-retry";
 
 export class InvalidMutationInputError extends Error {
   constructor() {
@@ -25,10 +27,11 @@ export function requiredRevision(data: FormData, key = "revision") {
 export function mutationFailure(error: unknown): MutationFailure {
   const code = classifyMutationError(error);
   if (!code) throw error;
-  return { ok: false, code, message: mutationErrorMessage(code) };
+  return { ok: false, code, message: error instanceof ToolRetryError ? automationRetryMessage(error.code) : mutationErrorMessage(code) };
 }
 
 export function classifyMutationError(error: unknown): MutationErrorCode | null {
+  if (error instanceof ToolRetryError) return error.code === "retry_history_required" ? "retry_history_required" : "blocked";
   if (error instanceof InvalidMutationInputError) return "invalid_input";
   if (error instanceof FileVersionConflictError) return "conflict";
   if (error instanceof FileLifecycleError) {

@@ -8,24 +8,26 @@ import path from "node:path";
 import { backup, DatabaseSync } from "node:sqlite";
 
 const sourceData = process.env.EREMITE_RELEASE_SOURCE_DATA_DIR;
-assert.ok(sourceData && path.isAbsolute(sourceData), "Set EREMITE_RELEASE_SOURCE_DATA_DIR to an absolute, read-only v1.5/0010 data source");
+assert.ok(sourceData && path.isAbsolute(sourceData), "Set EREMITE_RELEASE_SOURCE_DATA_DIR to an absolute, read-only public v1.6.1/0012 data source");
 const expectedOldMigrations = [
   "0001_initial.sql", "0002_file_lifecycle.sql", "0003_projects_tags_trash.sql",
   "0004_metadata_search.sql", "0005_compatibility_pagination.sql", "0006_automation_tool_registry.sql",
   "0007_ai_conversations.sql", "0008_ai_action_drafts.sql", "0009_ai_action_update_proposals.sql", "0010_ai_action_disambiguation.sql",
+  "0011_ai_tool_run_proposals.sql", "0012_ai_message_activities.sql",
 ];
-const expectedMigrations = [...expectedOldMigrations, "0011_ai_tool_run_proposals.sql", "0012_ai_message_activities.sql"];
+const expectedMigrations = [...expectedOldMigrations, "0013_automation_run_retry.sql"];
 const aiTables = ["ai_threads", "ai_messages", "ai_runs", "ai_message_sources", "ai_message_action_drafts", "ai_action_update_proposals", "ai_action_disambiguations", "ai_action_disambiguation_candidates"];
-const newTables = ["ai_tool_run_proposals", "ai_message_activities"];
+const newTables = [];
 const temporaryRoot = await mkdtemp(path.join(tmpdir(), "eremite-v16-copy-upgrade-"));
 const copy = path.join(temporaryRoot, "data");
 
 try {
+  const sourceDatabaseSha256 = await fileHash(path.join(sourceData, "app.sqlite"));
   const source = new DatabaseSync(path.join(sourceData, "app.sqlite"), { readOnly: true });
   let before;
   let fileReferences;
   try {
-    assert.deepEqual(migrations(source), expectedOldMigrations, "release source must be exactly v1.5/0010");
+    assert.deepEqual(migrations(source), expectedOldMigrations, "release source must be exactly public v1.6.1/0012");
     for (const row of source.prepare("SELECT version, checksum FROM schema_migrations ORDER BY version").all()) {
       const sql = await readFile(path.join(process.cwd(), "db", "migrations", row.version), "utf8");
       assert.equal(row.checksum, createHash("sha256").update(sql).digest("hex"), `${row.version} source checksum must match the released migration`);
@@ -33,7 +35,7 @@ try {
     assert.equal(source.prepare("PRAGMA integrity_check").get().integrity_check, "ok");
     assert.equal(source.prepare("PRAGMA foreign_key_check").all().length, 0);
     before = historicalTables(source);
-    for (const table of aiTables) assert.ok(before[table], `${table} must exist in the v1.5 source`);
+    for (const table of aiTables) assert.ok(before[table], `${table} must exist in the v1.6.1 source`);
     fileReferences = source.prepare("SELECT storage_key, sha256, byte_size FROM file_blobs ORDER BY storage_key").all();
     await verifyFileReferences(sourceData, fileReferences);
     await mkdir(copy, { recursive: true });
@@ -46,25 +48,31 @@ try {
   const prepared = new DatabaseSync(path.join(copy, "app.sqlite"), { readOnly: true });
   try {
     assert.deepEqual(migrations(prepared), expectedOldMigrations);
-    assert.deepEqual(historicalTables(prepared), before, "SQLite backup API copy must preserve every v1.5 table row");
+    assert.deepEqual(historicalTables(prepared), before, "SQLite backup API copy must preserve every v1.6.1 table row");
   } finally {
     prepared.close();
   }
   await verifyFileReferences(copy, fileReferences);
-  const result = await runUpgradeProbe(copy, Object.keys(before));
+  const result = await runUpgradeProbe(copy, Object.fromEntries(Object.entries(before).map(([name, table]) => [name, table.columns])));
   assert.equal(result.exitCode, 0, result.output);
   const report = JSON.parse(result.output.trim().split(/\r?\n/u).at(-1));
   assert.equal(report.integrity, "ok");
   assert.equal(report.foreignKeys, 0);
   assert.deepEqual(report.migrations, expectedMigrations);
-  assert.deepEqual(report.historicalTables, before, "all v1.5 table rows, including old AI data, must remain unchanged");
+  assert.deepEqual(report.historicalTables, before, "all v1.6.1 table rows, including old AI data, must remain unchanged");
+  assert.equal(report.historicalRetryParents, 0, "all pre-Retry Runs gain only a null retry_of_run_id");
+  assert.equal(report.retryForeignKey, true);
+  assert.equal(report.retryUniqueIndex, true);
+  assert.equal(report.retryIdentityTrigger, true);
   const snapshotDigest = createHash("sha256").update(JSON.stringify(before)).digest("hex");
   assert.deepEqual(report.newTableCounts, Object.fromEntries(newTables.map((table) => [table, 0])));
   assert.equal(report.currentFileProblems, 0);
   await verifyFileReferences(copy, fileReferences);
+  await verifyFileReferences(sourceData, fileReferences);
+  assert.equal(await fileHash(path.join(sourceData, "app.sqlite")), sourceDatabaseSha256, "source database remains byte-identical");
   const backups = await readdir(path.join(copy, "backups"), { withFileTypes: true });
   assert.ok(backups.some((entry) => entry.isDirectory() && entry.name.startsWith("pre-migration-")), "upgrade creates a pre-migration backup in the disposable copy");
-  console.log(`v1.5/0010 data-copy upgrade passed: ${Object.keys(before).length} old tables, including ${aiTables.length} AI tables, preserved by row count and SHA-256 through 0012; pre/post snapshot digest ${snapshotDigest}; ${fileReferences.length} file blobs verified; integrity and foreign keys clean. Old AI row counts: ${JSON.stringify(Object.fromEntries(aiTables.map((table) => [table, before[table].count])))}.`);
+  console.log(`public v1.6.1/0012 data-copy upgrade passed: ${Object.keys(before).length} old tables, including ${aiTables.length} AI tables, preserved row-by-row and by SHA-256 through 0013; pre/post snapshot digest ${snapshotDigest}; null legacy Retry lineage/FK/unique index/immutability trigger verified; ${fileReferences.length} file blobs and unchanged source database verified; integrity and foreign keys clean. Old AI row counts: ${JSON.stringify(Object.fromEntries(aiTables.map((table) => [table, before[table].count])))}.`);
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true });
 }
@@ -76,9 +84,10 @@ function migrations(connection) {
 function historicalTables(connection) {
   const names = connection.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'schema_migrations' ORDER BY name").all().map((row) => row.name);
   return Object.fromEntries(names.map((name) => {
+    const columns = connection.prepare(`PRAGMA table_info("${name.replaceAll('"', '""')}")`).all().map(row => row.name);
     const rows = connection.prepare(`SELECT * FROM "${name.replaceAll('"', '""')}"`).all();
-    const content = rows.map((row) => JSON.stringify(row, (_key, value) => typeof value === "bigint" ? value.toString() : value)).sort().join("\n");
-    return [name, { count: rows.length, sha256: createHash("sha256").update(content).digest("hex") }];
+    const serialized = rows.map((row) => JSON.stringify(row, (_key, value) => typeof value === "bigint" ? value.toString() : value)).sort();
+    return [name, { columns, count: rows.length, rows: serialized, sha256: createHash("sha256").update(serialized.join("\n")).digest("hex") }];
   }));
 }
 
@@ -87,24 +96,31 @@ async function verifyFileReferences(dataDirectory, references) {
     assert.match(file.storage_key, /^[a-f0-9]{64}$/u);
     const filename = path.join(dataDirectory, "files", file.storage_key);
     assert.equal((await stat(filename)).size, file.byte_size);
-    const hash = createHash("sha256");
-    for await (const chunk of createReadStream(filename)) hash.update(chunk);
-    assert.equal(hash.digest("hex"), file.sha256);
+    assert.equal(await fileHash(filename), file.sha256);
   }
 }
 
-function runUpgradeProbe(dataDirectory, oldTableNames) {
+async function fileHash(filename) {
+  const hash = createHash("sha256");
+  for await (const chunk of createReadStream(filename)) hash.update(chunk);
+  return hash.digest("hex");
+}
+
+function runUpgradeProbe(dataDirectory, oldColumns) {
   const code = `
     process.env.EREMITE_DATA_DIR = ${JSON.stringify(dataDirectory)};
     const { createHash } = await import('node:crypto');
     const database = await import('./src/platform/db/database.ts');
     const files = await import('./src/platform/backup/service.ts');
     const connection = database.db();
-    const names = ${JSON.stringify(oldTableNames)};
+    const oldColumns = ${JSON.stringify(oldColumns)};
+    const names = Object.keys(oldColumns);
     const historicalTables = Object.fromEntries(names.map(name => {
-      const rows = connection.prepare('SELECT * FROM "' + name.replaceAll('"', '""') + '"').all();
-      const content = rows.map(row => JSON.stringify(row, (_key, value) => typeof value === 'bigint' ? value.toString() : value)).sort().join('\\n');
-      return [name, { count: rows.length, sha256: createHash('sha256').update(content).digest('hex') }];
+      const columns = oldColumns[name];
+      const selected = columns.map(column => '"' + column.replaceAll('"', '""') + '"').join(',');
+      const rows = connection.prepare('SELECT ' + selected + ' FROM "' + name.replaceAll('"', '""') + '"').all();
+      const serialized = rows.map(row => JSON.stringify(row, (_key, value) => typeof value === 'bigint' ? value.toString() : value)).sort();
+      return [name, { columns, count: rows.length, rows: serialized, sha256: createHash('sha256').update(serialized.join('\\n')).digest('hex') }];
     }));
     const newTables = ${JSON.stringify(newTables)};
     const report = {
@@ -114,6 +130,10 @@ function runUpgradeProbe(dataDirectory, oldTableNames) {
       historicalTables,
       newTableCounts: Object.fromEntries(newTables.map(name => [name, connection.prepare('SELECT COUNT(*) AS count FROM "' + name + '"').get().count])),
       currentFileProblems: (await files.verifyCurrentFiles()).length,
+      historicalRetryParents: connection.prepare('SELECT COUNT(*) n FROM automation_runs WHERE retry_of_run_id IS NOT NULL').get().n,
+      retryForeignKey: connection.prepare('PRAGMA foreign_key_list(automation_runs)').all().some(row => row.from === 'retry_of_run_id' && row.table === 'automation_runs' && row.to === 'id' && row.on_delete === 'RESTRICT'),
+      retryUniqueIndex: connection.prepare('PRAGMA index_list(automation_runs)').all().some(row => row.name === 'automation_runs_retry_parent_uq' && row.unique === 1 && row.partial === 1) && connection.prepare('PRAGMA index_info(automation_runs_retry_parent_uq)').all().some(row => row.name === 'retry_of_run_id'),
+      retryIdentityTrigger: Boolean(connection.prepare("SELECT 1 FROM sqlite_master WHERE type = 'trigger' AND name = 'automation_runs_retry_identity_immutable'").get()),
     };
     console.log(JSON.stringify(report)); connection.close();
   `;

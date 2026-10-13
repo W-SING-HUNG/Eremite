@@ -6,6 +6,12 @@ on:
   pull_request:
     branches:
       - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - edited
+      - ready_for_review
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,7 +30,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
       - name: "Set up Node.js"
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -64,6 +70,11 @@ jobs:
           if (Test-Path -LiteralPath $dataDir) { throw 'CI data directory must be new' }
           New-Item -ItemType Directory -Path $dataDir -ErrorAction Stop | Out-Null
           "EREMITE_DATA_DIR=$dataDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $qaTemp = Join-Path $env:RUNNER_TEMP 'eremite-ci-temp'
+          New-Item -ItemType Directory -Path $qaTemp -ErrorAction Stop | Out-Null
+          "TEMP=$qaTemp" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "TMP=$qaTemp" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "EREMITE_TOOL_WORKSPACE_DIR=$qaTemp" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: "Install locked dependencies"
         run: |
           npm.cmd ci
@@ -74,17 +85,22 @@ jobs:
         run: |
           npm.cmd run verify
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: "Run real File Converter and PDF Retry engine gate"
+        run: |
+          npm.cmd run test:tool-retry:real
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: "Verify tracked source is unchanged"
         run: |
           git diff --exit-code -- package-lock.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           git diff --exit-code
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        if: "always()"
       - name: "Clean runner temporary files"
         if: "always()"
         run: |
           $temporaryRoot = [IO.Path]::GetFullPath($env:RUNNER_TEMP).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
-          $targets = @((Join-Path $env:RUNNER_TEMP 'eremite-ci-qpdf'), (Join-Path $env:RUNNER_TEMP 'eremite-ci-data'))
+          $targets = @((Join-Path $env:RUNNER_TEMP 'eremite-ci-qpdf'), (Join-Path $env:RUNNER_TEMP 'eremite-ci-data'), (Join-Path $env:RUNNER_TEMP 'eremite-ci-temp'))
           foreach ($target in $targets) {
             $absolute = [IO.Path]::GetFullPath($target)
             if (-not $absolute.StartsWith($temporaryRoot, [StringComparison]::OrdinalIgnoreCase)) { throw 'Cleanup target outside runner temp' }

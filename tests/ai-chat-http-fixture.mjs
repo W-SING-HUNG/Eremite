@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { randomUUID, scryptSync } from 'node:crypto';
@@ -8,6 +8,9 @@ import { File } from 'node:buffer';
 
 /** Disposable application + real HTTP OpenAI-compatible test double. */
 export async function startAIChatFixture({ port = 0, dev = false, configured = true, nativeTool = false } = {}) {
+  // Next dev rewrites this tracked generated file; restore its pre-test bytes.
+  const nextEnvironment = path.resolve('next-env.d.ts');
+  const originalNextEnvironment = await readFile(nextEnvironment);
   const directory = await mkdtemp(path.join(tmpdir(), 'eremite-ai-http-'));
   process.env.EREMITE_DATA_DIR = directory;
   const database = await import('@/platform/db/database');
@@ -143,8 +146,12 @@ export async function startAIChatFixture({ port = 0, dev = false, configured = t
       const killer = spawn('taskkill', ['/PID', String(server.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
       await new Promise(resolve => killer.on('exit', resolve));
     } else server.kill();
-    provider.closeAllConnections(); await new Promise(resolve => provider.close(resolve));
-    await rm(directory, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
+    try {
+      provider.closeAllConnections(); await new Promise(resolve => provider.close(resolve));
+      await rm(directory, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
+    } finally {
+      await writeFile(nextEnvironment, originalNextEnvironment);
+    }
   }
   try {
     for (let attempt = 0; attempt < 100; attempt++) {

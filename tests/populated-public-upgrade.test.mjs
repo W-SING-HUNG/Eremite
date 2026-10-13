@@ -10,27 +10,28 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 
-const releaseCommit = "a90fe7bb98a9cdcbdfddc32080ad36d1ee97d998";
+const releaseCommit = "274218c2680d36e6f2ca4abf2e6e60deff846ff7";
 const oldMigrations = [
   "0001_initial.sql", "0002_file_lifecycle.sql", "0003_projects_tags_trash.sql",
   "0004_metadata_search.sql", "0005_compatibility_pagination.sql", "0006_automation_tool_registry.sql",
   "0007_ai_conversations.sql", "0008_ai_action_drafts.sql", "0009_ai_action_update_proposals.sql", "0010_ai_action_disambiguation.sql",
+  "0011_ai_tool_run_proposals.sql", "0012_ai_message_activities.sql",
 ];
 const requiredTables = [
   "projects", "folders", "content_items", "file_assets", "file_versions", "file_blobs",
   "actions", "automation_runs", "ai_threads", "ai_messages", "ai_runs", "ai_message_sources",
   "ai_message_action_drafts", "ai_action_update_proposals", "ai_action_disambiguations",
-  "ai_action_disambiguation_candidates",
+  "ai_action_disambiguation_candidates", "ai_tool_run_proposals", "ai_message_activities",
 ];
 
 if (process.argv[2] === "--create-source") {
   await createReleaseSource(process.argv[3]);
 } else {
-  const releaseCheckout = process.env.EREMITE_V15_RELEASE_CHECKOUT;
-  assert.ok(releaseCheckout && path.isAbsolute(releaseCheckout), "Set EREMITE_V15_RELEASE_CHECKOUT to an absolute v1.5.0 tag checkout");
+  const releaseCheckout = process.env.EREMITE_PUBLIC_RELEASE_CHECKOUT;
+  assert.ok(releaseCheckout && path.isAbsolute(releaseCheckout), "Set EREMITE_PUBLIC_RELEASE_CHECKOUT to an absolute v1.6.1 tag checkout");
   assertReleaseCheckout(releaseCheckout);
-  assert.ok(existsSync(path.join(releaseCheckout, "node_modules", "typescript", "package.json")), "Install the v1.5.0 checkout's locked dependencies first");
-  const temporaryRoot = await mkdtemp(path.join(tmpdir(), "eremite-v15-release-fixture-"));
+  assert.ok(existsSync(path.join(releaseCheckout, "node_modules", "typescript", "package.json")), "Install the v1.6.1 checkout's locked dependencies first");
+  const temporaryRoot = await mkdtemp(path.join(tmpdir(), "eremite-public-v161-release-fixture-"));
   const dataDirectory = path.join(temporaryRoot, "data");
   try {
     await run(process.execPath, ["--import", "./tests/register-typescript-loader.mjs", path.resolve(process.argv[1]), "--create-source", dataDirectory], {
@@ -43,17 +44,17 @@ if (process.argv[2] === "--create-source") {
       env: { ...safeEnvironment(), EREMITE_RELEASE_SOURCE_DATA_DIR: dataDirectory },
       shell: process.platform === "win32",
     });
-    console.log(`Populated v1.5.0 release fixture passed: ${JSON.stringify(evidence)}.`);
+    console.log(`Populated v1.6.1 release fixture passed: ${JSON.stringify(evidence)}.`);
   } finally {
     await rm(temporaryRoot, { recursive: true, force: true });
   }
 }
 
 function assertReleaseCheckout(checkout) {
-  for (const ref of ["HEAD", "v1.5.0^{}"]) {
+  for (const ref of ["HEAD", "v1.6.1^{}"]) {
     const result = spawnSync("git", ["rev-parse", ref], { cwd: checkout, encoding: "utf8" });
-    assert.equal(result.status, 0, "v1.5.0 checkout must have the release tag");
-    assert.equal(result.stdout.trim(), releaseCommit, `${ref} must point to the official v1.5.0 release commit`);
+    assert.equal(result.status, 0, "v1.6.1 checkout must have the release tag");
+    assert.equal(result.stdout.trim(), releaseCommit, `${ref} must point to the official v1.6.1 release commit`);
   }
   const status = spawnSync("git", ["status", "--porcelain", "--untracked-files=no"], { cwd: checkout, encoding: "utf8" });
   assert.equal(status.status, 0);
@@ -61,7 +62,7 @@ function assertReleaseCheckout(checkout) {
 }
 
 function safeEnvironment() {
-  const allowed = ["PATH", "Path", "SystemRoot", "WINDIR", "TEMP", "TMP", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "PROGRAMDATA", "PATHEXT"];
+  const allowed = ["PATH", "Path", "SystemRoot", "WINDIR", "TEMP", "TMP", "EREMITE_TOOL_WORKSPACE_DIR", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "PROGRAMDATA", "PATHEXT"];
   return Object.fromEntries(allowed.filter((key) => process.env[key] !== undefined).map((key) => [key, process.env[key]]));
 }
 
@@ -82,7 +83,7 @@ async function createReleaseSource(dataDirectory) {
   assertReleaseCheckout(process.cwd());
   const parent = path.dirname(dataDirectory);
   assert.equal(path.basename(dataDirectory), "data");
-  assert.match(path.basename(parent), /^eremite-v15-release-fixture-/u);
+  assert.match(path.basename(parent), /^eremite-public-v161-release-fixture-/u);
   assert.equal(path.resolve(path.dirname(parent)), path.resolve(tmpdir()));
   assert.equal(path.resolve(process.env.EREMITE_DATA_DIR ?? ""), path.resolve(dataDirectory));
   assert.equal(existsSync(dataDirectory), false, "fixture must start with a new temporary data directory");
@@ -97,10 +98,11 @@ async function createReleaseSource(dataDirectory) {
   const actions = await releaseImport("src/modules/actions/service.ts");
   const automations = await releaseImport("src/modules/automations/service.ts");
   const chat = await releaseImport("src/modules/ai/chat-store.ts");
+  const toolRuns = await releaseImport("src/modules/ai/tool-run-store.ts");
 
   const projectId = projects.createProject({ name: "Release fixture project" });
   const folderId = folders.createFolder({ projectId, name: "Fixture folder" });
-  const bytes = Buffer.from("Eremite v1.5.0 release migration fixture.\n", "utf8");
+  const bytes = Buffer.from("Eremite v1.6.1 release migration fixture.\n", "utf8");
   const contentId = await inbox.createFileContentItemFromStream({
     body: new ReadableStream({ start(controller) { controller.enqueue(bytes); controller.close(); } }),
     originalName: "release-fixture.txt", mimeType: "text/plain", expectedSize: bytes.length,
@@ -122,6 +124,7 @@ async function createReleaseSource(dataDirectory) {
   const draftAction = actions.getAction(draftActionId);
   assert.ok(action && draftAction);
   database.withUnitOfWork((uow) => {
+    toolRuns.recordAIToolRunProposal(uow, { threadId: thread.id, messageId: started.assistantId, runId: started.runId, toolId: "core.file-converter", toolVersion: 1, inputJson: JSON.stringify({ conversionId: "png-to-jpeg", contentItemIds: [contentId] }) });
     chat.recordAIActionDraft(uow, { threadId: thread.id, messageId: started.assistantId, runId: started.runId, actionId: draftActionId, actionRevision: draftAction.revision });
     chat.recordAIActionUpdateProposal(uow, {
       threadId: thread.id, messageId: started.assistantId, runId: started.runId,
@@ -138,7 +141,7 @@ async function createReleaseSource(dataDirectory) {
         priority: action.priority, createdAt: action.created_at }],
     });
   });
-  assert.equal(chat.finishAIRun({ runId: started.runId, status: "completed", content: "Fixture answer", sources: [
+  assert.equal(chat.finishAIRun({ runId: started.runId, status: "completed", content: "Fixture answer", activities: [{ kind: "tool-run", state: "succeeded" }], sources: [
     { module: "inbox", entity: "content", id: contentId, label: "Fixture file", href: `/inbox?content=${contentId}` },
   ] }), true);
   const connection = database.db();
@@ -147,7 +150,7 @@ async function createReleaseSource(dataDirectory) {
 }
 
 function installDeterministicClockAndIds() {
-  // Keep v1.5 service behavior intact while making its generated IDs and timestamps repeatable.
+  // Keep v1.6.1 service behavior intact while making its generated IDs and timestamps repeatable.
   const NativeDate = Date;
   let nextMillisecond = NativeDate.parse("2025-06-01T00:00:00.000Z");
   globalThis.Date = class FixtureDate extends NativeDate {
@@ -157,7 +160,7 @@ function installDeterministicClockAndIds() {
   let sequence = 0;
   const nextBytes = (size) => {
     const parts = [];
-    while (Buffer.concat(parts).length < size) parts.push(createHash("sha256").update(`eremite-v15-fixture-${sequence++}`).digest());
+    while (Buffer.concat(parts).length < size) parts.push(createHash("sha256").update(`eremite-public-v161-fixture-${sequence++}`).digest());
     return Buffer.concat(parts).subarray(0, size);
   };
   crypto.randomBytes = nextBytes;
@@ -178,7 +181,7 @@ async function validateReleaseSource(dataDirectory) {
     assert.equal(source.prepare("PRAGMA integrity_check").get().integrity_check, "ok");
     assert.deepEqual(source.prepare("PRAGMA foreign_key_check").all(), []);
     const counts = Object.fromEntries(requiredTables.map((table) => [table, source.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get().count]));
-    for (const [table, count] of Object.entries(counts)) assert.ok(count > 0, `${table} must be populated by v1.5.0 services`);
+    for (const [table, count] of Object.entries(counts)) assert.ok(count > 0, `${table} must be populated by v1.6.1 services`);
     const blobs = source.prepare("SELECT storage_key, sha256, byte_size FROM file_blobs ORDER BY storage_key").all();
     for (const blob of blobs) {
       assert.match(blob.storage_key, /^[a-f0-9]{64}$/u);

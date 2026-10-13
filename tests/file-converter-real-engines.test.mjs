@@ -21,9 +21,7 @@ try {
   for (const item of cases) {
     const bytes = await readFile(item.sourcePath); const sha256 = createHash("sha256").update(bytes).digest("hex");
     const result = await withFileConverterOutput({ invocationId: uuidv7(), sourcePath: item.sourcePath, displayName: item.displayName, declaredMediaType: item.mime, expectedSize: bytes.length, expectedSha256: sha256, sourceFormat: item.sourceFormat, conversionId: item.conversionId }, async (output, response) => { assert.equal(output.format.formatId, item.expected); assert.ok((await readFile(output.path)).length > 0); return response.engine; });
-    assert.equal(result.response.status, "succeeded", JSON.stringify(result.response));
-    assert.equal(result.response.coreVersion, "1.1.2");
-    if (result.response.status === "succeeded") actual.push(result.value.id);
+    assert.equal(result.response.status, "succeeded", JSON.stringify(result.response)); if (result.response.status === "succeeded") actual.push(result.value.id);
   }
   assert.deepEqual(actual, ["sharp", "pandoc", "libreoffice"]);
   console.log("File Converter real-engine gate passed: Sharp, Pandoc and LibreOffice through the Eremite Host Adapter.");

@@ -6,17 +6,16 @@ import { createRequire } from "node:module";
 import { gunzipSync } from "node:zlib";
 import {
   FILE_CONVERTER_ARTIFACT_SHA256,
-  FILE_CONVERTER_CONTRACT_SHA256,
-  FILE_CONVERTER_NATIVE_HELPER_SHA256,
   FILE_CONVERTER_CONTRACT_ID,
   FILE_CONVERTER_PACKAGE_NAME,
   FILE_CONVERTER_PACKAGE_VERSION,
+  FILE_CONVERTER_NATIVE_HELPER_SHA256,
   FILE_CONVERTER_TOOL_ID,
   acceptedFileConversions,
   fileConverterCanonicalContract,
 } from "@/modules/automations/tools/file-converter/authority";
 
-const artifact = path.resolve("vendor/file-converter/file-converter-core-1.1.2.tgz");
+const artifact = path.resolve("vendor/file-converter/file-converter-core-1.1.3.tgz");
 const bytes = await readFile(artifact);
 assert.equal(createHash("sha256").update(bytes).digest("hex"), FILE_CONVERTER_ARTIFACT_SHA256);
 
@@ -41,10 +40,12 @@ function readTarEntries(tgz) {
 
 const tarEntries = readTarEntries(bytes);
 const entries = [...tarEntries.keys()];
-assert.equal(entries.length, 105);
+assert.equal(entries.length, 106);
 assert.ok(tarEntries.has("package/LICENSE"));
+assert.ok(tarEntries.has("package/NOTICE"));
 assert.ok(tarEntries.has("package/THIRD-PARTY-NOTICES.md"));
 assert.ok(tarEntries.has("package/dist/native/bin/fc-movefile.exe"));
+assert.equal(createHash("sha256").update(tarEntries.get("package/dist/native/bin/fc-movefile.exe")).digest("hex"), FILE_CONVERTER_NATIVE_HELPER_SHA256, "runtime helper digest comes from the fixed formal artifact");
 assert.ok(tarEntries.has("package/dist/cli/index.js"));
 assert.ok(tarEntries.has("package/tool-contract.json"));
 assert.equal(entries.some((entry) => /(^|\/)(src|tests|dev-harness|node_modules|\.workbuddy|accepted-capabilities)(\/|$)/u.test(entry)), false);
@@ -54,13 +55,13 @@ const manifest = JSON.parse(tarEntries.get("package/package.json").toString("utf
 assert.equal(manifest.name, FILE_CONVERTER_PACKAGE_NAME);
 assert.equal(manifest.version, FILE_CONVERTER_PACKAGE_VERSION);
 assert.equal(manifest.license, "Apache-2.0");
-assert.equal(manifest.engines.node, ">=24 <25");
+assert.equal(manifest.engines?.node, ">=24 <25", "Supplier runtime must retain its strict Node 24 boundary");
+const hostManifest = JSON.parse(await readFile("package.json", "utf8"));
+assert.equal(hostManifest.engines?.node, ">=24.15.0 <25", "public Host and Supplier share Node 24, with the Host's stricter minimum");
 assert.equal(manifest.bin?.["file-converter-core"], "dist/cli/index.js");
 assert.deepEqual(Object.keys(manifest.bin), ["file-converter-core"]);
 
-assert.deepEqual(manifest.dependencies, { sharp: "0.35.4" });
-assert.equal(createHash("sha256").update(tarEntries.get("package/tool-contract.json")).digest("hex"), FILE_CONVERTER_CONTRACT_SHA256);
-assert.equal(createHash("sha256").update(tarEntries.get("package/dist/native/bin/fc-movefile.exe")).digest("hex"), FILE_CONVERTER_NATIVE_HELPER_SHA256);
+assert.deepEqual(manifest.dependencies, { sharp: "0.35.5" });
 const supplierContract = JSON.parse(tarEntries.get("package/tool-contract.json").toString("utf8"));
 assert.deepEqual(supplierContract, fileConverterCanonicalContract);
 assert.equal(supplierContract.$id, FILE_CONVERTER_CONTRACT_ID);
@@ -69,8 +70,9 @@ const installedRoot = path.resolve("node_modules/file-converter-core");
 const installedManifest = JSON.parse(await readFile(path.join(installedRoot, "package.json"), "utf8"));
 assert.equal(installedManifest.name, FILE_CONVERTER_PACKAGE_NAME);
 assert.equal(installedManifest.version, FILE_CONVERTER_PACKAGE_VERSION);
+assert.equal(installedManifest.engines?.node, ">=24 <25");
 const installedSharp = createRequire(path.join(installedRoot, "package.json"))("sharp");
-assert.equal(installedSharp.versions.sharp, "0.35.4");
+assert.equal(installedSharp.versions.sharp, "0.35.5");
 for (const [entry, expected] of tarEntries) {
   if (!entry.startsWith("package/") || entry.endsWith("/")) continue;
   const installedPath = path.join(installedRoot, entry.slice("package/".length));
@@ -83,5 +85,9 @@ assert.equal(acceptedFileConversions.length, 18);
 assert.equal(new Set(acceptedFileConversions.map((entry) => entry.id)).size, 18);
 assert.equal(acceptedFileConversions.filter((entry) => !entry.previewable).length, 4);
 assert.equal(acceptedFileConversions.some((entry) => entry.id === "docx-to-pdf" && entry.engine === "libreoffice"), true);
+for (const conversion of acceptedFileConversions) {
+  assert.equal(conversion.defaultProfile, conversion.engine === "sharp" ? "balanced" : "standard");
+  assert.deepEqual(conversion.profiles, [conversion.defaultProfile], "frozen request supports only the effective default profile");
+}
 
 console.log("File Converter artifact gate passed: accepted tgz identity, canonical Contract and Host-owned 18-item allowlist.");

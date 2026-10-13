@@ -15,8 +15,8 @@ Last Verified Date: **2026-10-13 (Asia/Shanghai; source-boundary review)**
 
 | Entry | Status | Boundary |
 | --- | --- | --- |
-| file-converter-root-destination | RESOLVED | Only omitted/undefined defaults to the source Folder. Explicit null/empty selects Project root. New Retry evidence v2 freezes destination identity and a fixed 64-character SHA-256 over ordered ancestor IDs/names/parents/Projects; historical v1 breadcrumbs remain revalidated without rewriting parent/child input bytes. |
-| pdf-tools-root-destination | RESOLVED | Only omitted/undefined defaults to the first source Folder. Explicit null/empty selects Project root for all five operations and split outputs. Retry uses the same bounded v2 path digest and compatible v1 validation; the 65,536-character input limit remains unchanged. |
+| file-converter-root-destination | RESOLVED | Only omitted/undefined defaults to the source Folder. Explicit null/empty selects Project root. New Retry evidence v2 freezes destination identity and a fixed 64-character SHA-256 over ordered ancestor IDs/names/parents/Projects; historical v1 breadcrumbs remain revalidated without rewriting parent/child input bytes. Retry confirmation preserves v1 paths and uses the existing trusted leaf-name snapshot for v2, explicitly distinguishing Unassigned/Project root/Folder and stating when the full path was not recorded. |
+| pdf-tools-root-destination | RESOLVED | Only omitted/undefined defaults to the first source Folder. Explicit null/empty selects Project root for all five operations and split outputs. Retry uses the same bounded v2 path digest and compatible v1 validation; the 65,536-character input limit remains unchanged. Confirmation uses the same v1/v2 display rules without changing server eligibility or reintroducing breadcrumb arrays. |
 
 Retry creates a new Run and output namespace, preserves parent history and fixed source versions, rejects changed policy/destination, and checks Run state before File Lifecycle commit. Failed single-file creation cleans only a newly promoted blob confirmed absent from blob metadata under the writer lease; pre-existing/shared bytes and uncertain references are preserved. Retry Workspace and Retry UI changes require public state review. Backup verification compares the complete retained blob set, migration checksums and actual hashes, and rejects uncopied non-empty WAL. Original versions remain immutable.
 
@@ -52,7 +52,7 @@ Publication uses accepted clean export, public sync branch, PR, required Verify,
 
 ## Current Next Step
 
-Fresh candidate-bound automated gates and independent acceptance are separate. Independent review of this bounded Retry-evidence candidate is NOT VERIFIED. Completed acceptance below applies only to its identified historical manifest, not to these new modifications, whole-product absence of defects, real external Provider recovery or screenshot/pixel acceptance.
+Fresh candidate-bound automated gates and independent acceptance are separate. Independent review of this bounded Retry-evidence and Retry UI candidate is NOT VERIFIED. Completed acceptance below applies only to its identified historical manifest, not to these new modifications, whole-product absence of defects, real external Provider recovery or screenshot/pixel acceptance.
 
 ## In Progress
 

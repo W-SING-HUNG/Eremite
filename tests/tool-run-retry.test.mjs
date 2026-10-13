@@ -4,6 +4,7 @@ import { File } from "node:buffer";
 import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import "./automation-retry-confirmation.test.mjs";
 
 const root = await mkdtemp(path.join(tmpdir(), "eremite-tool-retry-"));
 process.env.EREMITE_DATA_DIR = root;

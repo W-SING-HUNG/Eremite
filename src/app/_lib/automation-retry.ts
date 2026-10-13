@@ -15,7 +15,25 @@ export function automationRetryConfirmation(payloadJson: string) {
     const value = JSON.parse(payloadJson);
     const evidence = value.retryEvidence;
     const sourceNames = evidence.sources.map((source: { originalName: string }) => source.originalName).join("、");
-    const location = evidence.destination.projectName ? [evidence.destination.projectName, ...evidence.destination.folders.map((folder: { name: string }) => folder.name)].join(" / ") : "未归入专案";
+    const destination = evidence.destination;
+    let location: string;
+    if (evidence.schemaVersion === 2) {
+      if ((destination.projectId !== null && typeof destination.projectId !== "string")
+        || (destination.folderId !== null && typeof destination.folderId !== "string")) return null;
+      if (destination.projectId === null) {
+        if (destination.folderId !== null) return null;
+        location = "未归入专案";
+      } else {
+        const projectName = destination.projectName || "原专案（名称未记录）";
+        const snapshot = value.destination?.projectId === destination.projectId && value.destination?.folderId === destination.folderId
+          ? value.destination.folderNameSnapshot : null;
+        location = destination.folderId === null ? `${projectName} / 专案根目录`
+          : typeof snapshot === "string" && snapshot.trim() ? `${projectName} · 文件夹：${snapshot}（完整路径未记录）`
+            : `${projectName} · 原文件夹（名称及完整路径未记录）`;
+      }
+    } else {
+      location = destination.projectName ? [destination.projectName, ...destination.folders.map((folder: { name: string }) => folder.name)].join(" / ") : "未归入专案";
+    }
     const p = value.parameters;
     const pageList = (pages: number[]) => pages.map(page => page + 1).join("、");
     const conversion = typeof value.conversionId === "string" ? value.conversionId.split("-to-").map((format: string) => format.toUpperCase()).join(" → ") : "";

@@ -140,6 +140,7 @@ function watchedGroup(filename) {
   if (/^\.github\/workflows\/[^/]+\.ya?ml$/u.test(filename) || filename === "scripts/check-project-state.mjs" || /^tests\/project-state-.*\.test\.mjs$/u.test(filename)) return "governance";
   if (/^src\/modules\/automations\/tools\//u.test(filename) || /^src\/modules\/automations\/(?:registry|service|reconciliation)\.ts$/u.test(filename) || /^src\/app\/_services\/ask-eremite-tool-runs\.ts$/u.test(filename)) return "tools";
   if (/^src\/app\/_components\/automations\/(?:.*-launcher|tool-ui-registry)\.tsx$/u.test(filename)) return "tools";
+  if (filename === "src/app/_components/automations-workspace.tsx" || filename === "src/app/_lib/automation-retry.ts") return "tools";
   if (/^src\/modules\/ai\/(?:provider(?:-settings\.server|-probe\.server)?|config|runtime|contracts|chat-contracts|tools)\.ts$/u.test(filename)) return "provider";
   return null;
 }

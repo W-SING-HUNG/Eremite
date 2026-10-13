@@ -147,6 +147,28 @@ try {
   await put("src/modules/automations/tools/file-converter/contract.ts", "export type Protocol = { version: 1 };\n");
   await put("src/app/actions.ts", "export async function executeAutomationToolAction() { return 1; }\nexport async function ordinaryAction() { return 1; }\n");
   const baseline = commit("fixture baseline");
+  // Retry can change entirely within these two public UI surfaces; both need Tool state review.
+  for (const [i, filename] of ["src/app/_components/automations-workspace.tsx", "src/app/_lib/automation-retry.ts"].entries()) {
+    git("switch", "-c", `retry-monitor-${i}`, baseline);
+    await put(filename, "export const retryAvailable = true;\n");
+    const monitored = commit("isolated Retry UI change without state");
+    assert.throws(() => checkPullRequest({ root: repo, base: baseline, head: monitored, body: "" }), /explicit no-update/u, filename);
+    assert.throws(() => checkPullRequest({ root: repo, base: baseline, head: monitored, body: body("<reason>") }), /Concrete review/u, filename);
+    const explanation = body("Only clarifies an existing Retry confirmation message; frozen inputs, supported capabilities and all verification boundaries remain unchanged.");
+    assert.deepEqual(checkPullRequest({ root: repo, base: baseline, head: monitored, body: explanation }).groups, ["tools"]);
+    await writeFile(path.join(root, "retry-body.md"), explanation);
+    cli(repo, ["--base", baseline, "--head", monitored], {}, 1);
+    cli(repo, ["--base", baseline, "--head", monitored, "--pr-body-file", path.join(root, "retry-body.md")]);
+    await put("docs/PUBLIC-STATE.md", describeRow(document, "file-converter-root-destination", "Reviewed the existing Retry confirmation surface and frozen destination boundary."));
+    const synchronized = commit("isolated Retry UI and corresponding state review");
+    checkPullRequest({ root: repo, base: baseline, head: synchronized, body: "## Project state impact\n- [x] Updated current project state\n" });
+    git("switch", "-c", `retry-removal-${i}`, monitored);
+    git("rm", "--", filename);
+    const removed = commit("isolated Retry capability removal without state");
+    assert.throws(() => checkPullRequest({ root: repo, base: monitored, head: removed, body: "" }), /explicit no-update/u, filename);
+    cli(repo, ["--base", monitored, "--head", removed], {}, 1);
+  }
+  git("switch", "main");
   git("switch", "-c", "feature");
   await put(toolPath, "export const validationMessage = 'clarified';\n");
   const noDocHead = commit("ordinary monitored change without state update");
@@ -363,5 +385,5 @@ try {
   assert.throws(() => checkPullRequest({ root: repo, base: formatting, head: actionChange, body: "" }), /explicit no-update/u);
   console.log(`Project state consistency passed: ${cases} CLI exit-code assertions plus document, PR-reason, critical-boundary, unrelated-change and lifecycle assertions.`);
 } finally {
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 }

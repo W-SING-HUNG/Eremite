@@ -6,6 +6,8 @@ export const FILE_CONVERTER_TOOL_VERSION = 1;
 export const FILE_CONVERTER_PACKAGE_NAME = "file-converter-core";
 export const FILE_CONVERTER_PACKAGE_VERSION = "1.1.3";
 export const FILE_CONVERTER_ARTIFACT_SHA256 = "566d03e5850d0fd966482f55028f136d809ed902801ecdad097abbc1ad2ba1c6";
+// SHA-256 of dist/native/bin/fc-movefile.exe from the fixed 1.1.3 archive above.
+export const FILE_CONVERTER_NATIVE_HELPER_SHA256 = "9aa5bd91810dc9c643641a2ea4272fabcb1d579340a9cb0b87ea20750f5fb919";
 export const FILE_CONVERTER_CONTRACT_ID = "https://eremite.local/contracts/file-converter/v1.1/canonical-tool-contract-v1.1.json";
 
 export type FileConverterFormat = "png" | "jpeg" | "webp" | "avif" | "markdown" | "html" | "docx" | "xlsx" | "pptx" | "pdf";

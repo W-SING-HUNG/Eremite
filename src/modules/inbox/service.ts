@@ -591,8 +591,21 @@ export async function saveEditedText(input: {
 
 async function commitStagedNewFile(operationId: string, staged: StagedUpload, title?: string, projectId?: string | null, folderId?: string | null, beforeCommit?: (uow: UnitOfWork) => void) {
   const promoted = await promoteStagedUpload(staged);
-  run("UPDATE file_write_operations SET state = 'published', staged_path = NULL, updated_at = ? WHERE id = ?", now(), operationId);
-  return insertNewLogicalFile(operationId, promoted.stored, title, projectId, folderId, beforeCommit);
+  try {
+    run("UPDATE file_write_operations SET state = 'published', staged_path = NULL, updated_at = ? WHERE id = ?", now(), operationId);
+    return insertNewLogicalFile(operationId, promoted.stored, title, projectId, folderId, beforeCommit);
+  } catch (error) {
+    // The caller still holds the writer lease. Never unlink a pre-existing or referenced blob.
+    if (promoted.created) {
+      try {
+        const referenced = one("SELECT 1 FROM file_blobs WHERE sha256 = ? OR storage_key = ? LIMIT 1", promoted.stored.sha256, promoted.stored.storageKey);
+        if (!referenced) await unlink(managedFilePath(promoted.stored.storageKey));
+      } catch {
+        // Uncertain references or failed cleanup preserve bytes and the original error; maintenance can retry.
+      }
+    }
+    throw error;
+  }
 }
 
 function insertNewLogicalFile(operationId: string, stored: StoredFile, title?: string, projectId?: string | null, folderId?: string | null, beforeCommit?: (uow: UnitOfWork) => void) {

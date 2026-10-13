@@ -18,7 +18,7 @@ Last Verified Date: **2026-10-12 (Asia/Shanghai; source-boundary review)**
 | file-converter-root-destination | RESOLVED | Only omitted/undefined defaults to the source Folder. Explicit null/empty selects Project root; Retry freezes that destination. |
 | pdf-tools-root-destination | RESOLVED | Only omitted/undefined defaults to the first source Folder. Explicit null/empty selects Project root for all five operations and split outputs; Retry freezes it. |
 
-Retry creates a new Run and output namespace, preserves parent history and fixed source versions, rejects changed policy/destination, and checks Run state before File Lifecycle commit. Backup verification compares the complete retained blob set, migration checksums and actual hashes, and rejects uncopied non-empty WAL. Original versions remain immutable.
+Retry creates a new Run and output namespace, preserves parent history and fixed source versions, rejects changed policy/destination, and checks Run state before File Lifecycle commit. Failed single-file creation cleans only a newly promoted blob confirmed absent from blob metadata under the writer lease; pre-existing/shared bytes and uncertain references are preserved. Retry Workspace and Retry UI changes require public state review. Backup verification compares the complete retained blob set, migration checksums and actual hashes, and rejects uncopied non-empty WAL. Original versions remain immutable.
 
 ## Current Architecture
 
@@ -26,13 +26,13 @@ Host owns policy, validation, Run history, authorization and persistence through
 
 | Entry | Status | Boundary |
 | --- | --- | --- |
-| provider-contract | VERIFIED | Provider-neutral Runtime/chat contracts retain text, structured output and Tool calling behind Host-owned context and explicit confirmation. |
+| provider-contract | VERIFIED | Provider-neutral Runtime/chat retains four read Tools and three controlled proposal Tools behind observed Host context, permissions and explicit confirmation. Application Provider profiles take precedence, with keys in Windows SecretStore; environment credentials apply only when no application profile exists. |
 
 ## File Converter Tool Core
 
 | Entry | Status | Boundary |
 | --- | --- | --- |
-| file-converter-supplier-version | `1.1.3` | Host-vendored archive SHA-256 `566d03e5850d0fd966482f55028f136d809ed902801ecdad097abbc1ad2ba1c6`; Sharp 0.35.5; source provenance is supplied with the export. Public Supplier main remains 1.1.2. |
+| file-converter-supplier-version | `1.1.3` | Host-vendored archive SHA-256 `566d03e5850d0fd966482f55028f136d809ed902801ecdad097abbc1ad2ba1c6`; Sharp 0.35.5; Supplier Node `>=24 <25` intersects public Host `>=24.15.0 <25`. The archive-pinned native helper SHA-256 `9aa5bd91810dc9c643641a2ea4272fabcb1d579340a9cb0b87ea20750f5fb919` is checked again before each actual invocation. Source provenance is supplied with the export. Public Supplier main remains 1.1.2. |
 | file-converter-capabilities | VERIFIED | Exactly 18 Host-authorized conversions: 12 image pairs, three Pandoc and three Office-to-PDF. Only effective defaults are accepted: images balanced; Pandoc/Office standard. Non-default profiles reject before Run/engine/write. |
 | file-converter-contract | VERIFIED | Canonical Contract v1.1 / Protocol v1 unchanged, with no request profile field. Host owns output containment, size/SHA/type checks and final persistence. |
 
@@ -60,6 +60,6 @@ Candidate validation results are provided beside the export manifest, outside th
 
 ## Known Risks
 
-FOLLOW-UP: source-map-js 1.2.1 production-transitive HIGH advisory retains its security classification; Eremite exploit reachability is NOT VERIFIED. No remediation or zero-risk claim is made here. Default arbitrary long LibreOffice profiles and the native initialization cause remain bounded by the explicit short-root mitigation. Backup appVersion metadata retains the historical 1.3.0 value; compatibility depends on format, migration checksums and file integrity.
+FOLLOW-UP: source-map-js 1.2.1 production-transitive HIGH advisory retains its security classification; Eremite exploit reachability is NOT VERIFIED. No remediation or zero-risk claim is made here. Default arbitrary long LibreOffice profiles and the native initialization cause remain bounded by the explicit short-root mitigation. Backup appVersion metadata retains the historical 1.3.0 value; compatibility depends on format, migration checksums and file integrity. At 375px with no file selected, Ask may require scrolling below the initial viewport; initial-viewport reachability remains a separate mobile usability FOLLOW-UP.
 
 See [documentation boundary](public-baseline.md), [runtime configuration](tool-runtime.md), [backup](backup-and-restore.md), [security policy](../SECURITY.md) and [third-party inventory](../THIRD-PARTY-NOTICES.md).

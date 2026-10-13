@@ -9,6 +9,7 @@ import {
   FILE_CONVERTER_CONTRACT_ID,
   FILE_CONVERTER_PACKAGE_NAME,
   FILE_CONVERTER_PACKAGE_VERSION,
+  FILE_CONVERTER_NATIVE_HELPER_SHA256,
   FILE_CONVERTER_TOOL_ID,
   acceptedFileConversions,
   fileConverterCanonicalContract,
@@ -44,6 +45,7 @@ assert.ok(tarEntries.has("package/LICENSE"));
 assert.ok(tarEntries.has("package/NOTICE"));
 assert.ok(tarEntries.has("package/THIRD-PARTY-NOTICES.md"));
 assert.ok(tarEntries.has("package/dist/native/bin/fc-movefile.exe"));
+assert.equal(createHash("sha256").update(tarEntries.get("package/dist/native/bin/fc-movefile.exe")).digest("hex"), FILE_CONVERTER_NATIVE_HELPER_SHA256, "runtime helper digest comes from the fixed formal artifact");
 assert.ok(tarEntries.has("package/dist/cli/index.js"));
 assert.ok(tarEntries.has("package/tool-contract.json"));
 assert.equal(entries.some((entry) => /(^|\/)(src|tests|dev-harness|node_modules|\.workbuddy|accepted-capabilities)(\/|$)/u.test(entry)), false);
@@ -53,6 +55,9 @@ const manifest = JSON.parse(tarEntries.get("package/package.json").toString("utf
 assert.equal(manifest.name, FILE_CONVERTER_PACKAGE_NAME);
 assert.equal(manifest.version, FILE_CONVERTER_PACKAGE_VERSION);
 assert.equal(manifest.license, "Apache-2.0");
+assert.equal(manifest.engines?.node, ">=24 <25", "Supplier runtime must retain its strict Node 24 boundary");
+const hostManifest = JSON.parse(await readFile("package.json", "utf8"));
+assert.equal(hostManifest.engines?.node, ">=24.15.0 <25", "public Host and Supplier share Node 24, with the Host's stricter minimum");
 assert.equal(manifest.bin?.["file-converter-core"], "dist/cli/index.js");
 assert.deepEqual(Object.keys(manifest.bin), ["file-converter-core"]);
 
@@ -65,6 +70,7 @@ const installedRoot = path.resolve("node_modules/file-converter-core");
 const installedManifest = JSON.parse(await readFile(path.join(installedRoot, "package.json"), "utf8"));
 assert.equal(installedManifest.name, FILE_CONVERTER_PACKAGE_NAME);
 assert.equal(installedManifest.version, FILE_CONVERTER_PACKAGE_VERSION);
+assert.equal(installedManifest.engines?.node, ">=24 <25");
 const installedSharp = createRequire(path.join(installedRoot, "package.json"))("sharp");
 assert.equal(installedSharp.versions.sharp, "0.35.5");
 for (const [entry, expected] of tarEntries) {

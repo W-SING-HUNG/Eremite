@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { File } from "node:buffer";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -226,12 +226,16 @@ try {
       };
       const input = batch ? { operation: "pdf.merge", contentItemIds: [pdfA, pdfB] } : raw(sourceId);
       const contentBefore = database.one("SELECT count(*) AS n FROM content_items").n;
+      const blobsBefore = database.all("SELECT * FROM file_blobs ORDER BY id");
+      const filesBefore = (await readdir(database.filesDirectory, { withFileTypes: true })).filter(entry => entry.isFile()).map(entry => entry.name).sort();
       const oldExecution = service.executeExternalTool({ operationId: randomUUID(), toolId: tool.toolId, rawInput: input });
       await entered;
       reconcileInterruptedAutomationRuns({ now: future });
       assert.equal(service.getAutomationRun(runId).status, "failed");
       releaseStream(); await oldExecution;
       assert.equal(database.one("SELECT count(*) AS n FROM content_items").n, contentBefore, "terminal old executor cannot commit formal output");
+      assert.deepEqual(database.all("SELECT * FROM file_blobs ORDER BY id"), blobsBefore, "stale single/batch executors leave blob metadata unchanged");
+      assert.deepEqual((await readdir(database.filesDirectory, { withFileTypes: true })).filter(entry => entry.isFile()).map(entry => entry.name).sort(), filesBefore, "stale single/batch executors remove only their newly published blobs");
       assert.equal(inbox.getFileCreationByIdempotencyKey(`automation:${runId}:output:0`).state, "failed");
       await rejected(runId, "retry_output_exists");
     }

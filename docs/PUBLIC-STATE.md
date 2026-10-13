@@ -1,17 +1,17 @@
 # Eremite public support baseline
 
-This source candidate retains package version 1.6.1. The published v1.6.1 tag remains unchanged. Canonical source: https://github.com/W-SING-HUNG/Eremite.
+The public maintenance source retains package version 1.6.1. PR #2 did not create a new software version, tag or Release; the existing published v1.6.1 remains unchanged. Canonical source: https://github.com/W-SING-HUNG/Eremite.
 
-Last Verified Date: **2026-10-13 (Asia/Shanghai; source-boundary review)**
+Last Verified Date: **2026-10-13 (Asia/Shanghai; PR #2 acceptance, integration and CI evidence)**
 
 ## Current Version
 
 | Entry | Value | Boundary |
 | --- | --- | --- |
-| public-host-package | `1.6.1` | Source candidate; compared with package.json and both root lockfile versions. |
+| public-host-package | `1.6.1` | Public maintenance source; compared with package.json and both root lockfile versions. No new-version Release from PR #2. |
 | public-node-range | `>=24.15.0 <25` | Windows x64 and Node 24; no other platform or major is accepted. |
 
-## Current Post-release Maintenance — 2026-10-12
+## Current Post-release Maintenance — 2026-10-13
 
 | Entry | Status | Boundary |
 | --- | --- | --- |
@@ -48,25 +48,31 @@ Formal invocation and Retry resolve the checked executable again and pass only t
 
 ## Git / GitHub Source of Truth
 
-Publication uses accepted clean export, public sync branch, PR, required Verify, squash merge and main CI. Source candidate generation does not authorize those stages. Historical public source release last checked 2026-10-04; live refs and CI are queried at GitHub.
+Public maintenance uses accepted clean export, a reviewed PR, required strict Verify, squash merge and main CI. New-version publication is a separate authorized step. Live refs and CI are queried at GitHub; the SHAs below identify dated PR #2 events, not a permanently current main HEAD.
 
 ## Current Next Step
 
-Fresh candidate-bound automated gates and independent acceptance are separate. Independent review of this bounded Retry-evidence and Retry UI candidate is NOT VERIFIED. Completed acceptance below applies only to its identified historical manifest, not to these new modifications, whole-product absence of defects, real external Provider recovery or screenshot/pixel acceptance.
+PR #2's final candidate independent acceptance and public maintenance integration are complete. Continue maintenance of the preserved Host/Supplier boundaries and known FOLLOW-UPs through reviewed, validated changes. Any new software-version Release remains a separate, unexecuted publication step. Completed candidate acceptance and CI do not establish whole-product absence of defects, real external Provider recovery or broader screenshot/pixel acceptance.
 
 ## In Progress
 
-Candidate validation results are provided beside the export manifest, outside the public source tree. They are not GitHub CI evidence.
+PR #2's final product candidate completed independent acceptance and public integration for the manifest and events below. Those PASS records do not cover later documentation bytes. Documentation corrections establish summary accuracy through governance and CI; future product candidates require their own source-bound validation and acceptance. Known Risks remain open.
 
-## Historical accepted candidate and PR evidence — 2026-10-13
+## Historical PR #2 acceptance and integration — 2026-10-13
 
 | Evidence | Status | Exact scope |
 | --- | --- | --- |
-| Independent candidate acceptance | PASS | Accepted manifest SHA-256 `aa1c95edf1eef3c30154c56b2342c50716275e73f18363f5f224710408abc74e`, before the bounded Retry-evidence changes in this source tree. |
-| Current public PR CI checkpoint | PASS | PR #2 Head `aaa1ff108c8f07a7e13c8932f8ee66fcb94a0528`, strict Verify run [38354596332](https://github.com/W-SING-HUNG/Eremite/actions/runs/38354596332); this does not verify the subsequently modified candidate. |
-| Public main integration and publication | NOT PERFORMED | Last observed public main `51826c005f156dd30c534d342dd3c016f2393e9d` does not contain that PR Head; published Host v1.6.1 remains unchanged. Candidate acceptance and PR CI do not constitute a merge, tag or release. |
+| Independent candidate acceptance | PASS | Earlier historical manifest SHA-256 `aa1c95edf1eef3c30154c56b2342c50716275e73f18363f5f224710408abc74e`, before bounded Retry evidence and the final UI repair; this earlier evidence is preserved, not the final-candidate proof. |
+| Earlier PR #2 CI checkpoint | PASS | Historical review Head `aaa1ff108c8f07a7e13c8932f8ee66fcb94a0528`, strict Verify run [38354596332](https://github.com/W-SING-HUNG/Eremite/actions/runs/38354596332); this checkpoint predates the final candidate. |
+| Final PR #2 candidate independent acceptance | PASS | Qoder independently accepted the final candidate with 0 BLOCKER, bound to manifest SHA-256 `ff907a9a745da7642347d45bd2bcf34b41310cbc1c60ab37cd15918a07325757`, including bounded Retry evidence and the v1/v2 Retry UI repair. |
+| Final PR #2 Verify | PASS | Final review Head `925d76956349246ad95d0c30d04b0518384dade4`; strict Verify run [38412081417](https://github.com/W-SING-HUNG/Eremite/actions/runs/38412081417) succeeded for that Head and its merge base. |
+| PR #2 public maintenance integration | COMPLETED | [PR #2](https://github.com/W-SING-HUNG/Eremite/pull/2) was Squash Merged on 2026-10-13 as event commit [`f6e2836276e9cd074bae8cf1e8e7a12b47b6ee5d`](https://github.com/W-SING-HUNG/Eremite/commit/f6e2836276e9cd074bae8cf1e8e7a12b47b6ee5d). This SHA identifies that merge event, not the main HEAD after future changes. |
+| PR #2 post-merge main CI | PASS | CI run [38415818211](https://github.com/W-SING-HUNG/Eremite/actions/runs/38415818211) succeeded for the PR #2 squash event commit above. It does not certify future main commits. |
+| New-version publication from PR #2 | NOT EXECUTED | The maintenance integration retained Host `1.6.1`; no new version, tag or Release was created. The existing v1.6.1 release remains the published software baseline. |
 
-This dated checkpoint records completed acceptance and observed PR CI separately. The revised candidate's independent acceptance remains NOT VERIFIED, and its GitHub CI has not been executed.
+Generation checkpoint, 2026-10-13: the bounded Retry-evidence and Retry UI candidate for manifest `ff907a9a745da7642347d45bd2bcf34b41310cbc1c60ab37cd15918a07325757` was marked NOT VERIFIED when exported. That historical marker was superseded by the final Qoder PASS above; it is not the current acceptance status.
+
+These completed acceptance and integration records apply to the identified PR #2 candidate and commits. Later maintenance does not invalidate those historical events or inherit their acceptance/CI; a future Release requires its own versioned publication evidence.
 
 ## Known Risks
 

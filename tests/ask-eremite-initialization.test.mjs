@@ -21,11 +21,13 @@ try {
   const first = await createThread();
   const second = await createThread();
 
-  async function scenario(name, run, { failList = false, failThread = false, unconfigured = false, noHistory = false, staleRunning = false } = {}) {
+  async function scenario(name, run, { failList = false, failThread = false, unconfigured = false, noHistory = false, staleRunning = false, failCreatedHistory = false, artifactError = false } = {}) {
     const page = await browser.newPage();
     const errors = [], sends = [], creates = [];
     const listArrived = deferred(), releaseList = deferred(), threadArrived = deferred(), releaseThread = deferred();
     let holdList = true, holdThread = true;
+    let created = false, confirmed = false;
+    const draftId = crypto.randomUUID();
     let nextThreadDelay = null, createDelay = null;
     const pauseThread = id => { const delay = { id, arrived: deferred(), release: deferred() }; nextThreadDelay = delay; return delay; };
     const pauseCreate = () => { const delay = { arrived: deferred(), release: deferred() }; createDelay = delay; return delay; };
@@ -36,8 +38,12 @@ try {
       if (request.method() === 'POST') {
         const body = request.postDataJSON();
         if (body.action === 'send') sends.push(body);
+        if (artifactError && body.action === 'confirm_action_draft') {
+          confirmed = true;
+          return route.fulfill({ status: 409, json: { code: 'action_revision_conflict' } });
+        }
         if (body.action === 'create') {
-          creates.push(body);
+          creates.push(body); created = true;
           if (createDelay) { const delay = createDelay; createDelay = null; delay.arrived.resolve(); await delay.release.promise; }
         }
         return route.continue();
@@ -54,10 +60,16 @@ try {
           payload.messages.push({ ...payload.messages.at(-1), id: crypto.randomUUID(), role: 'assistant', status: 'running', run_id: crypto.randomUUID() });
           return route.fulfill({ response, json: payload });
         }
+        if (artifactError) {
+          const response = await route.fetch(), payload = await response.json();
+          const draft = { actionId: draftId, revision: 1, actionRevisionAtCreation: 1, createdAt: new Date().toISOString(), title: 'Synthetic lifecycle draft', priority: 'normal', dueDate: null, project: null, linkedContent: [], lifecycle: confirmed ? 'confirmed' : 'pending', actionStatus: confirmed ? 'active' : 'draft' };
+          payload.messages.push({ ...payload.messages.at(-1), id: draftId, role: 'assistant', status: 'completed', content: '', sources: [], activities: [], actionDrafts: [draft], actionUpdates: [], actionDisambiguations: [], toolRunProposals: [] });
+          return route.fulfill({ response, json: payload });
+        }
         return route.continue();
       }
       if (holdList) { listArrived.resolve(); await releaseList.promise; }
-      if (failList) return route.fulfill({ status: 500, json: { code: 'ai_generation_failed' } });
+      if (failList || failCreatedHistory && created) return route.fulfill({ status: 500, json: { code: 'ai_generation_failed' } });
       const response = await route.fetch();
       const payload = await response.json();
       if (unconfigured) payload.provider = { configured: false, model: null };
@@ -180,6 +192,21 @@ try {
       delay.release.resolve(); await open(); await ready(); await page.waitForTimeout(250);
       assert.equal(sends.length, 0); assert.equal(await input.inputValue(), '创建期间关闭');
     }, { noHistory: true });
+    await scenario('created conversation stays usable when history refresh fails', async ({ page, dialog, input, sends, creates, release, ready }) => {
+      await release(); await dialog.getByRole('button', { name: '新对话', exact: true }).last().click(); await ready();
+      assert.equal(creates.length, 1); assert.equal(await dialog.getByRole('alert').count(), 1);
+      await input.fill('历史刷新失败后仍可发送'); await input.press('Enter');
+      await page.waitForFunction(() => document.querySelector('.ask-status')?.textContent.includes('回复已完成'));
+      assert.equal(sends.length, 1); assert.ok(![first.id, second.id].includes(sends[0].threadId));
+    }, { failCreatedHistory: true });
+    await scenario('reopening refreshed artifacts clears earlier inline errors', async ({ dialog, input, sends, release, open, ready }) => {
+      await release(); await dialog.getByRole('button', { name: '创建任务', exact: true }).click();
+      await dialog.locator('.ask-draft-error').waitFor();
+      await dialog.getByRole('button', { name: '关闭', exact: true }).click(); await open(); await ready();
+      assert.equal(await dialog.locator('.ask-draft-error').count(), 0);
+      assert.match(await dialog.locator('.ask-draft-card__header').innerText(), /已创建/);
+      assert.equal(sends.length, 0); assert.equal(await input.inputValue(), '');
+    }, { artifactError: true });
   }
   console.log(JSON.stringify({ beforeFix, evidence }, null, 2));
 } finally { await browser?.close(); await fixture?.close(); }

@@ -2,7 +2,7 @@
 
 Pressing Enter immediately after opening Ask previously prevented the textarea's default action while initialization was loading, without preserving a send request. Initialization reads the Provider/conversation list before loading the selected conversation and its revision. Sending before both complete could select an old conversation or create an unnecessary new one.
 
-The composer now records one explicit non-composing Enter request while initialization is loading and displays waiting feedback. It dispatches once after successful initialization. Failure or an unavailable Provider preserves the input and displays feedback. Editing, closing, changing context or selecting another conversation cancels the old request. Selection generations guard late initialization responses and the asynchronous conversation creation before dispatch.
+The composer now records one explicit non-composing Enter request while initialization is loading and displays waiting feedback. It dispatches once after successful initialization. Failure or an unavailable Provider preserves the input and displays feedback. Editing, closing, changing context or selecting another conversation cancels the old request. Selection generations guard late initialization responses and the asynchronous conversation creation before dispatch. A post-create history refresh failure does not invalidate the created conversation, and reopening resets the four inline artifact error maps.
 
 Shift+Enter remains a newline. Composing Enter and key code 229 do not send or queue a request. The Send button, SDK stream, Stop, and Host-owned AI contracts retain their existing boundaries. This change has no schema, migration, Runtime, Tool, Supplier, package version or release impact.
 
@@ -19,6 +19,8 @@ Shift+Enter remains a newline. Composing Enter and key code 229 do not send or q
 - Shift+Enter and `compositionstart`/`compositionupdate`/composing Enter/`compositionend`, plus non-composing 229: no accidental sends; Send, streaming and Stop remain functional.
 - Empty history: one new conversation despite repeated Enter.
 - Closing during automatic conversation creation: no dispatch and preserved input.
+- Successfully created conversations remain usable if their history-list refresh fails.
+- Reopening a refreshed artifact clears earlier inline errors and shows its updated lifecycle.
 
 Set `EREMITE_PLAYWRIGHT_MODULE` and `EREMITE_BROWSER_EXECUTABLE` to the local installations, use isolated TEMP/TMP, build the production application, then run:
 
@@ -30,6 +32,6 @@ The fixture creates and removes its own isolated `EREMITE_DATA_DIR`; no real use
 
 ## Validation boundaries
 
-Local production Chrome regression: 12/12 PASS, with no uncaught browser errors. Targeted Ask/accessibility tests, typecheck, production build and public-state validation: PASS. Repository CI runs the complete Host verification against the retained public dependency and security baseline.
+Local production Chrome regression: 14/14 PASS, with no uncaught browser errors. Targeted Ask/accessibility tests, typecheck, production build and public-state validation: PASS. Repository CI runs the complete Host verification against the retained public dependency and security baseline.
 
 Real external Provider behavior, manual native input-method acceptance and independent product acceptance are NOT VERIFIED. Automated composition events cover the requested Enter safety check. These local results do not claim whole-product absence of defects or create a new software release.

@@ -116,7 +116,7 @@ export function AskEremite() {
     let cancelled = false;
     const version = selection.current;
     const isCurrent = () => !cancelled && mounted.current && version === selection.current;
-    setLoading(true);
+    setLoading(true); setDraftErrors({}); setUpdateErrors({}); setToolRunErrors({}); setTargetErrors({});
     void refreshList(0, version).then(async result => {
       if (!isCurrent()) return;
       const id = detail?.thread.id ?? result.threads[0]?.id;
@@ -175,7 +175,8 @@ export function AskEremite() {
       const thread = await api<AIThread>('', { action: 'create' });
       if (!mounted.current || version !== selection.current) return;
       setDetail({ thread, messages: [], hasOlder: false }); setStreamed(null); setToolTrail([]); setFollowing(true); setText('');
-      setInitialization('ready'); await refreshList(0, version);
+      setInitialization('ready');
+      await refreshList(0, version).catch(() => { if (mounted.current && version === selection.current) setError('ai_generation_failed'); });
       inputRef.current?.focus();
     } catch { if (mounted.current && version === selection.current) { clearQueuedSend(); setInitialization('failed'); setError('ai_generation_failed'); } }
     finally { pending.current = false; if (mounted.current && version === selection.current) setLoading(false); }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { calculateFloatingPosition, type FloatingPlacement } from "@/app/_lib/floating-position";
 import { isTopOverlay, registerOverlay } from "@/app/_lib/overlay-stack";
@@ -15,10 +15,15 @@ export const focusableSelector = [
   "[tabindex]:not([tabindex='-1'])",
 ].join(", ");
 
+// A closing modal retains its inert surface, but nested portals and their focus
+// handlers must disappear at logical close, just as they did before exit motion.
+export const OverlayInteractionContext = createContext(true);
+
 export function OverlayPortal({ children }: { children: React.ReactNode }) {
+  const interactive = useContext(OverlayInteractionContext);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  return mounted ? createPortal(children, document.body) : null;
+  return mounted && interactive ? createPortal(children, document.body) : null;
 }
 
 export function useDismissableLayer({
@@ -32,6 +37,9 @@ export function useDismissableLayer({
   returnFocus?: boolean;
 }) {
   const reactId = useId();
+  const interactive = useContext(OverlayInteractionContext);
+  const interactiveRef = useRef(interactive);
+  interactiveRef.current = interactive;
   const id = `overlay-${reactId}`;
   const dismissRef = useRef(onDismiss);
   const returnTargetRef = useRef<HTMLElement | null>(null);
@@ -39,7 +47,7 @@ export function useDismissableLayer({
   dismissRef.current = onDismiss;
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !interactive) return;
     shouldReturnFocusRef.current = returnFocus;
     const trigger = triggerRef?.current;
     returnTargetRef.current = trigger && canReceiveFocus(trigger)
@@ -81,9 +89,9 @@ export function useDismissableLayer({
       document.removeEventListener("click", onClick, true);
       if (modal) document.body.style.overflow = previousOverflow;
       const target = returnTargetRef.current;
-      if (shouldReturnFocusRef.current && target?.isConnected) window.requestAnimationFrame(() => target.focus());
+      if (interactiveRef.current && shouldReturnFocusRef.current && target?.isConnected) window.requestAnimationFrame(() => { if (interactiveRef.current) target.focus(); });
     };
-  }, [id, modal, open, panelRef, returnFocus, triggerRef]);
+  }, [id, interactive, modal, open, panelRef, returnFocus, triggerRef]);
 
   return id;
 }
@@ -94,8 +102,9 @@ export function useFocusScope({ open, panelRef, layerId, initialFocusSelector = 
   layerId: string;
   initialFocusSelector?: string;
 }) {
+  const interactive = useContext(OverlayInteractionContext);
   useLayoutEffect(() => {
-    if (!open) return;
+    if (!open || !interactive) return;
     const focusInitial = () => {
       const panel = panelRef.current;
       if (!panel) return false;
@@ -134,7 +143,7 @@ export function useFocusScope({ open, panelRef, layerId, initialFocusSelector = 
       document.removeEventListener("keydown", onKeyDown, true);
       document.removeEventListener("focusin", onFocusIn, true);
     };
-  }, [initialFocusSelector, layerId, open, panelRef]);
+  }, [initialFocusSelector, interactive, layerId, open, panelRef]);
 }
 
 export function useAnchoredPosition({ open, anchorRef, panelRef, placement = "bottom-end" }: {
@@ -143,6 +152,7 @@ export function useAnchoredPosition({ open, anchorRef, panelRef, placement = "bo
   panelRef: RefObject<HTMLElement | null>;
   placement?: FloatingPlacement;
 }) {
+  const interactive = useContext(OverlayInteractionContext);
   const [style, setStyle] = useState<CSSProperties>({ visibility: "hidden" });
   const update = useCallback(() => {
     const anchor = anchorRef.current;
@@ -160,7 +170,7 @@ export function useAnchoredPosition({ open, anchorRef, panelRef, placement = "bo
     setStyle({ position: "fixed", top: next.top, left: next.left, maxHeight: next.maxHeight, visibility: "visible" });
   }, [anchorRef, panelRef, placement]);
   useLayoutEffect(() => {
-    if (!open) return;
+    if (!open || !interactive) return;
     setStyle({ visibility: "hidden" });
     let frame = 0;
     const observer = new ResizeObserver(update);
@@ -186,7 +196,7 @@ export function useAnchoredPosition({ open, anchorRef, panelRef, placement = "bo
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
-  }, [anchorRef, open, panelRef, update]);
+  }, [anchorRef, interactive, open, panelRef, update]);
   return style;
 }
 

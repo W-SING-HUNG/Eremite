@@ -7,7 +7,7 @@ import { randomUUID, scryptSync } from 'node:crypto';
 import { File } from 'node:buffer';
 
 /** Disposable application + real HTTP OpenAI-compatible test double. */
-export async function startAIChatFixture({ port = 0, dev = false, configured = true, nativeTool = false } = {}) {
+export async function startAIChatFixture({ port = 0, dev = false, configured = true, nativeTool = false, prepare, responseDelay = 0 } = {}) {
   // Next dev rewrites this tracked generated file; restore its pre-test bytes.
   const nextEnvironment = path.resolve('next-env.d.ts');
   const originalNextEnvironment = await readFile(nextEnvironment);
@@ -33,6 +33,8 @@ export async function startAIChatFixture({ port = 0, dev = false, configured = t
     const inbox = await import('@/modules/inbox/service');
     entities.nativeFileId = await inbox.createFileContentItemFromStream({ body: new File([png], 'browser-source.png', { type: 'image/png' }).stream(), originalName: 'browser-source.png', mimeType: 'image/png', expectedSize: png.length });
   }
+  // Prepare synthetic browser data before the application writer starts.
+  await prepare?.({ directory, entities });
   connection.close();
   const stats = { started: 0, cancelled: 0, completed: 0, toolCalls: 0, draftToolCalls: 0, draftRoundTrips: 0, updateToolCalls: 0, mode: 'normal' };
   const provider = createServer(async (request, response) => {
@@ -55,6 +57,7 @@ export async function startAIChatFixture({ port = 0, dev = false, configured = t
       return;
     }
     const toolResults = parsed.messages.filter(message => message.role === 'tool').length;
+    if (responseDelay > 0) await new Promise(resolve => setTimeout(resolve, responseDelay));
     if (stats.mode === 'error' || (stats.mode === 'after-draft-error' && toolResults > 0)) {
       response.writeHead(401, { 'Content-Type': 'application/json' });
       response.end(JSON.stringify({ error: { message: 'mock-provider-secret-body Authorization fixture-only-key' } })); return;

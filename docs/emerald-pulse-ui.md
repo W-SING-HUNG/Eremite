@@ -25,4 +25,4 @@ The typography and closeout browser probes additionally require a caller-prepare
 
 ## Boundaries
 
-No business, database, API, AI Runtime, Tool policy, File Lifecycle, permission, persistence, package version or Supplier change is part of this update. Existing initialization-time immediate Enter behavior in Ask remains a FOLLOW-UP. Historical private validation documents, local paths, screenshots, logs, databases, caches and QA working directories are not part of the public source delivery.
+No business, database, API, AI Runtime, Tool policy, File Lifecycle, permission, persistence, package version or Supplier change was part of this presentation update. The then-existing initialization-time immediate Enter FOLLOW-UP was subsequently resolved by the separate [Ask repair](ask-initialization-enter.md), included in Host v1.7.0. Historical private validation documents, local paths, screenshots, logs, databases, caches and QA working directories are not part of the public source delivery.

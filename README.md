@@ -8,7 +8,7 @@ Eremite 保存文件与链接，通过 Project、Folder 和 Tag 组织资料，�
 
 ## 当前状态
 
-**Published release: v1.6.1 (unchanged); this tree is a maintenance source candidate** — [正式 Release 与 release notes](https://github.com/W-SING-HUNG/Eremite/releases/tag/v1.6.1)。
+**Eremite Host v1.7.0** — [正式 Release 与 release notes](https://github.com/W-SING-HUNG/Eremite/releases/tag/v1.7.0)。
 
 - 支持 Windows x64，Node.js **>=24.15.0 <25**；推荐 **24.15.0**。
 - 当前为 source-first：从源码安装依赖并运行。
@@ -133,6 +133,6 @@ Host owns **UI、policy、authorization、workspace isolation、routing、valida
 
 Copyright 2026 翁成航 (Chenghang Weng). 署名见 [NOTICE](NOTICE)。第三方依赖和 Supplier components 保留各自许可，详见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
 
-## Maintenance source candidate
+## v1.7.0
 
-This source candidate retains Host package 1.6.1 and adds safe failed-Run Retry, explicit Project-root destinations, complete backup/WAL validation and bounded native runtime settings. Next is locked to 16.3.8; FC runtime is 1.1.3 / Sharp 0.35.5. PDF remains rc5 with external qpdf. The published v1.6.1 tag is unchanged; candidate validation and independent acceptance remain separate. See [current support scope](docs/PUBLIC-STATE.md) and [runtime configuration](docs/tool-runtime.md).
+v1.7.0 includes safe failed-Run Retry, explicit Project-root destinations, complete backup/WAL validation, bounded native runtime settings, Emerald Pulse V1/V1.1 and the Ask initialization Enter repair. Next remains locked to 16.3.8; FC runtime remains 1.1.3 / Sharp 0.35.5; PDF remains rc5 with external qpdf. This release preparation changes no dependency or Supplier bytes. See [v1.7.0 release notes](docs/releases/v1.7.0.md), including the retained source-map-js HIGH advisory and support limits. See [current support scope](docs/PUBLIC-STATE.md) and [runtime configuration](docs/tool-runtime.md).

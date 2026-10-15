@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-This policy covers Eremite v1.6.1 source-first distribution. Earlier versions
+This policy covers Eremite v1.7.0 source-first distribution. Earlier versions
 have no declared security maintenance commitment.
 
 ## Reporting a Vulnerability

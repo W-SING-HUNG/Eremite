@@ -1,138 +1,144 @@
+<div align="center">
+
 # Eremite
 
-本地优先、单用户的个人数字资料与行动管理应用。
+**把资料、知识与下一步行动，放在同一个本地工作台。**
 
-Eremite 保存文件与链接，通过 Project、Folder 和 Tag 组织资料，并提供 Actions、Processing、Trash 和 Search。内置 Viewer 用于查看资料；File Converter 和 PDF Tools 在本机处理文件，结果经校验后保存为新资料，保留来源文件。
+*A local-first workspace for files, knowledge, and action.*
 
-数据保存在本机，AI Provider 为可选配置。Eremite Host 负责 UI、策略、授权、工作区隔离、路由、校验、持久化、File Lifecycle 和 Run History；Supplier Core 只提供无界面的文件处理能力。
+[![Latest release](https://img.shields.io/github/v/release/W-SING-HUNG/Eremite?style=flat-square&label=release)](https://github.com/W-SING-HUNG/Eremite/releases/latest)
+[![CI](https://github.com/W-SING-HUNG/Eremite/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/W-SING-HUNG/Eremite/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-2563eb?style=flat-square)](LICENSE)
+[![Platform: Windows x64](https://img.shields.io/badge/platform-Windows%20x64-64748b?style=flat-square)](#运行环境)
 
-## 当前状态
+[功能概览](#功能概览) · [快速开始](#快速开始) · [设计原则](#设计原则) · [文档](#文档与资源) · [v1.7.0 发行说明](https://github.com/W-SING-HUNG/Eremite/releases/tag/v1.7.0)
 
-**Eremite Host v1.7.0** — [正式 Release 与 release notes](https://github.com/W-SING-HUNG/Eremite/releases/tag/v1.7.0)。
+</div>
 
-- 支持 Windows x64，Node.js **>=24.15.0 <25**；推荐 **24.15.0**。
-- 当前为 source-first：从源码安装依赖并运行。
-- 无 Windows installer、无 hosted deployment，未发布 npm package。
-- 其他平台和 Node 主版本尚未验证。
+## 概览
 
-## Quick Start
+Eremite 是一款面向个人的 **local-first 数字资料与行动管理应用**。它把文件、网页链接、项目、标签和待办行动连接起来，让收集、整理、阅读、处理和回顾发生在同一个工作空间。
 
-安装 Git 和上述 Node.js 版本后，在 Windows PowerShell 中运行：
+**资料由你在本机保管，文件操作由你发起，AI 按需启用。** 从收集到行动，保留清晰的来源与历史。
+
+> **收集内容 → 组织上下文 → 阅读与检索 → 转换文件或规划行动 → 保留历史**
+
+## 功能概览
+
+- **收集与整理**：保存文件和链接；通过 Projects、Folders 与 Tags 建立结构；集中处理待整理资料，通过回收站恢复已移入其中的对象。
+- **搜索与阅读**：检索资料、行动、项目、文件夹及工具运行记录；在内置 Viewer 中查看 PDF、图片、TXT、Markdown、DOCX、ZIP 目录及浏览器支持的视频。
+- **行动管理**：创建和管理 Actions，设置优先级、到期日与状态，并关联来源资料。
+- **本地文件处理**：通过 File Converter 执行 18 条受控转换；使用 PDF Tools 合并、拆分、提取、旋转和重排页面。
+- **可选 AI 辅助**：在 Ask Eremite 中基于获准读取的上下文提问，提出待确认的行动草稿、行动更新或文件工具运行建议。
+
+单文件上传上限为 **512 MiB**。DOCX 预览为近似排版，ZIP 只展示目录、不解压；TXT 与 Markdown 支持显式编辑，保存时创建新文件版本。
+
+### 为日常使用而设计
+
+- **本地优先**：SQLite、原始文件和备份保存在本机；不依赖托管服务。
+- **保留可追溯性**：文本编辑保存为新版本，转换生成新资料；符合重试条件的失败文件工具运行可创建新运行，保留原运行与来源版本。
+- **明确操作边界**：Host（应用主程序）负责授权、文件校验、隔离执行与最终保存，工具 Core 提供文件处理能力。
+- **可选而非强制的 AI**：不配置 Provider 也能正常使用资料管理、行动管理和本地文件工具。
+- **中文友好的界面**：Emerald Pulse 视觉系统采用本地字体、清晰的阅读层次，并支持减少动画效果。
+
+## 快速开始
+
+### 运行环境
+
+| 项目 | 要求 |
+| --- | --- |
+| 操作系统 | **Windows x64** |
+| Node.js | **>=24.15.0 <25**，推荐 `24.15.0` |
+| 安装方式 | **从源码运行**，需要 Git 和 npm |
+
+当前 **v1.7.0** 为源码发行版，无 Windows 安装程序、公开托管实例或已发布的 npm 软件包。其他操作系统与 Node.js 主版本尚未验证。
+
+在 **PowerShell** 中运行以下命令，获取已发布的 `v1.7.0` 源码：
 
 ```powershell
-git clone https://github.com/W-SING-HUNG/Eremite.git
+git clone --depth 1 --branch v1.7.0 https://github.com/W-SING-HUNG/Eremite.git
 cd Eremite
 npm.cmd ci
 npm.cmd run dev
 ```
 
-打开 <http://127.0.0.1:3000>，首次运行设置本地密码并登录。日常启动仍使用 `npm.cmd run dev`；更换端口可用 `npm.cmd run dev -- --port 3001`。请使用项目 npm scripts 启动应用。
+随后访问 <http://127.0.0.1:3000>，首次启动时设置本地密码并登录。日常启动仍使用 `npm.cmd run dev`；需要更换端口时，使用 `npm.cmd run dev -- --port 3001`。
 
-## 核心能力
+构建并以生产模式在本机运行时，先停止开发服务，再执行：
 
-| 能力 | 当前用途 |
+```powershell
+npm.cmd run build
+npm.cmd run start
+```
+
+开发和生产启动脚本均限制监听 `127.0.0.1`；**请勿通过公网监听、反向代理或端口转发暴露应用**。
+
+## 文件转换与外部依赖
+
+基础的资料管理和行动管理无需安装下列文件处理引擎。使用对应转换能力时，需准备其依赖：
+
+| 能力 | 依赖与边界 |
 | --- | --- |
-| Content | 保存文件与链接，管理资料及不可变的文件版本；单文件上传上限 512 MiB。 |
-| Projects / Folders / Tags | 按 Project 和任意深度 Folder 组织资料，用 Tag 跨模块分类。 |
-| Actions | 管理行动、优先级、到期日、状态及来源资料。 |
-| Processing | 集中处理待整理资料。 |
-| Trash | 查看和恢复已移入回收站的对象；永久删除需要确认。 |
-| Search | 搜索资料、行动、Project、Folder 和工具运行记录，支持范围及 Tag 筛选。 |
-| Viewer | 查看 PDF、图片、TXT、Markdown、DOCX、ZIP 目录和浏览器支持的视频；DOCX 为近似排版，ZIP 不解压。TXT/Markdown 保存编辑时创建新文件版本。 |
-| File Converter | 18 条受 Host allowlist 控制的图片、文档及 Office → PDF 转换。 |
-| PDF Tools | PDF 合并、拆分、提取、旋转和重排页面。 |
-| AI | 可选的资料问答及待确认的 Action Draft、Action update 和 Native Tool proposal。 |
+| 图片格式转换 | PNG、JPEG、WebP、AVIF 之间的 12 条转换，由 Sharp 支持 |
+| 文档格式转换 | Markdown ↔ HTML、Markdown → DOCX 需要 [Pandoc 3.1+](https://pandoc.org/installing.html) |
+| Office → PDF | DOCX、XLSX、PPTX 转 PDF 需要 [LibreOffice 7.6+](https://www.libreoffice.org/download/download-libreoffice/) |
+| PDF 页面操作 | 五项 PDF Tools 操作需要 [qpdf **12.4.0**](https://github.com/qpdf/qpdf/releases/tag/v12.4.0)（精确版本） |
 
-## 数据与备份
+Pandoc、LibreOffice 和 qpdf **不随项目捆绑**。按[工具运行环境说明](docs/tool-runtime.md)配置可执行文件路径或应用进程的 PATH；缺失引擎或版本不符时，对应能力不可用。
 
-SQLite 数据库、原文件和备份默认位于项目根目录的 `data/`，该目录不进入 Git。删除或更换源码目录前，请保留数据。可用 `EREMITE_DATA_DIR` 指定其他数据目录。
+Host 固定使用 [File Converter Core](https://github.com/W-SING-HUNG/Eremite-File-Converter-Core) `1.1.3` 和 [PDF Tools Core](https://github.com/W-SING-HUNG/Eremite-PDF-Tools-Core) `1.0.0-rc5` 归档。PDF Core 仍为预发行版；File Converter 的公开源码版本仍为 `1.1.2`，与 Host 使用的归档分别管理。详见[发行与依赖边界](docs/public-baseline.md)。
 
-使用应用内“立即备份”，升级前另保存一份到设备之外。恢复须停止应用并验证备份，详见[备份与恢复](docs/backup-and-restore.md)。**不要复制运行中的 SQLite 数据库充当备份。**
+## 设计原则
 
-测试必须使用新建的隔离数据目录和合成数据，不能连接日常真实数据。生产构建使用临时数据目录。
+### 数据在本机，控制权属于用户
 
-## 安全边界
+- 默认数据目录为项目下的 `data/`，也可通过 `EREMITE_DATA_DIR` 指定其他目录；真实数据和备份不应进入 Git。
+- **默认数据保存在项目目录内；删除、更换源码目录或升级前，请先备份并确认数据已安全保留。**
+- 文件版本与工具输出通过统一的文件生命周期管理保存；AI 生成的操作建议需经用户确认，并由 Host 重新校验后执行。
+- AI Settings 支持 OpenAI-compatible Provider；应用内配置的 API Key 存储在 Windows Credential Manager（服务端环境变量配置见 [.env.example](.env.example)）。只有显式发起 AI 请求或连接测试，才会向配置的 Provider 发出请求；请求可能包含问题及获准读取的资料文字。启用前请了解服务商的数据政策。
+- Eremite 为**单用户、本机使用**而设计，本地登录密码不构成面向互联网部署的安全模型。
 
-Eremite 面向本机单用户使用。项目的 dev/start scripts 固定监听 `127.0.0.1`，禁止通过公网接口、反向代理或端口转发暴露应用。**本地密码不是 internet deployment security model。** 请保护操作系统账户、Credential Manager、数据目录和备份。
+**升级前请使用应用内备份功能，验证备份并另存一份。** 恢复前须停止应用；不要直接复制运行中的 SQLite 数据库作为有效备份。操作说明见[备份与恢复](docs/backup-and-restore.md)。
 
-漏洞报告入口及详细规则见 [SECURITY.md](SECURITY.md)。
+### 清晰的 Host / Core 边界
 
-## AI 与隐私
+```mermaid
+flowchart TB
+    UI["Workspace UI"] --> H["Eremite Host"]
+    H --> D["Local data<br/>SQLite · Files · Backups"]
+    H --> C["User-confirmed tool execution"]
+    C --> S["File Converter / PDF Tools Core"]
+    S --> V["Host validation<br/>File Lifecycle · Run History"]
+    V --> D
+    H -. "Explicit request" .-> A["Optional AI Provider"]
+```
 
-AI 为可选功能。未配置 Provider 时，资料、行动和本地工具仍可使用。AI Settings 支持 OpenAI-compatible Provider，只有用户显式发起 AI 请求或 Test Connection 才向 Provider 出站连接。请求可能包含问题和 Host 允许读取的资料文字；启用前请了解服务商的数据政策。
+Host 负责策略、授权、执行协调、验证、运行历史与持久化；工具 Core 提供无界面的文件处理能力。业务模块通过公开服务交互，AI 经 Host 适配器读取获准的上下文。详细契约与模块划分见[架构文档](docs/architecture.md)。
 
-应用内 API key 保存在 Windows Credential Manager，不存业务数据库，也不返回客户端。没有应用内 Provider profile 时，可使用完整的服务端进程环境配置：`EREMITE_AI_BASE_URL`、`EREMITE_AI_API_KEY`、`EREMITE_AI_MODEL`。模板见 [.env.example](.env.example)，真实凭据不得写入 Git、日志或公开问题报告。
-
-AI proposal 需要用户确认。Host 在确认时重新验证提案及来源版本，再通过已有服务执行；AI 不直接写业务数据库，不自主执行工具。出站 Provider 请求不受入站 loopback 限制。
-
-## File Converter
-
-使用 [Eremite File Converter Core runtime 1.1.3 (Supplier published source remains v1.1.2)](https://github.com/W-SING-HUNG/Eremite-File-Converter-Core)。
-
-当前支持 18 条已验收的转换：PNG/JPEG/WebP/AVIF 之间的 12 条图片转换，Markdown → HTML、HTML → Markdown、Markdown → DOCX，以及 DOCX/XLSX/PPTX → PDF。
-
-- 图片转换使用 Sharp。
-- 文档转换需要外部 [Pandoc >=3.1](https://pandoc.org/installing.html)。
-- Office → PDF 需要外部 [LibreOffice >=7.6](https://www.libreoffice.org/download/download-libreoffice/)。
-
-Pandoc 和 LibreOffice 不随 Eremite 捆绑。安装位置可以在 C 盘或 D 盘；对应程序可通过应用进程 PATH，或 server-only FFC_PANDOC_PATH / FFC_SOFFICE_PATH 绝对路径配置；修改启动环境后重启应用。图像仅接受 balanced 默认质量，文档仅接受 standard；短工具目录配置见 runtime 文档。缺少某个外部引擎时，对应转换不可用。
-
-## PDF Tools
-
-使用 [Eremite PDF Tools Core v1.0.0-rc5](https://github.com/W-SING-HUNG/Eremite-PDF-Tools-Core)，该 Supplier 版本保留 prerelease 身份。
-
-提供 merge、split、extract、rotate、reorder 五个操作。需要单独安装 [qpdf exactly 12.4.0](https://github.com/qpdf/qpdf/releases/tag/v12.4.0)，并将其 bin 目录加入应用进程 PATH。缺失或版本不符时，对应能力不可用。
-
-Eremite/PDF Tools 不捆绑 qpdf 或 Microsoft VC runtime，也不自动下载或回退到内置 qpdf。
-
-## Development
-
-在支持的 Windows/Node.js 环境中安装依赖后运行：
+## 开发与验证
 
 ```powershell
 npm.cmd run typecheck
 npm.cmd test
 npm.cmd run verify
-npm.cmd run build
 ```
 
-测试只使用 isolated data 和合成文件。涉及真实 Provider 或外部引擎的测试须按各测试的前置要求运行，并检查跳过项。开发输出为 `.next-dev/`，生产输出为 `.next/`。
+自动化测试应使用**独立的 `EREMITE_DATA_DIR` 和合成数据**，不得连接真实个人数据。部分集成测试需要指定版本的外部文件引擎；详细要求见[贡献指南](CONTRIBUTING.md)与[工具运行环境](docs/tool-runtime.md)。
 
-生产运行时，先停止开发服务，再执行 `npm.cmd run build` 和 `npm.cmd run start`。监听地址仍为 `127.0.0.1`。
+## 文档与资源
 
-## Project structure / architecture
-
-| 位置 | 职责 |
+| 资源 | 链接 |
 | --- | --- |
-| `src/app/` | 页面、路由及应用服务组合。 |
-| `src/modules/` | 资料、行动、项目、标签、搜索、Viewer、工具及 AI 的模块边界。 |
-| `src/platform/` | SQLite、备份、文件 IO 等跨模块能力。 |
-| `db/migrations/` | 数据库迁移；已发布迁移只读。 |
-| `tests/` | 使用隔离数据的自动化验证。 |
-| `vendor/` | Host 使用的固定版本 Supplier runtime archives。 |
+| **v1.7.0 正式发行说明** | [Release Notes](docs/releases/v1.7.0.md) · [GitHub Release](https://github.com/W-SING-HUNG/Eremite/releases/tag/v1.7.0) |
+| **支持范围与已知限制** | [Public State](docs/PUBLIC-STATE.md) |
+| **系统架构** | [Architecture](docs/architecture.md) |
+| **工具环境与依赖** | [Tool Runtime](docs/tool-runtime.md) · [Distribution Boundaries](docs/public-baseline.md) |
+| **备份与恢复** | [Backup & Restore](docs/backup-and-restore.md) |
+| **参与贡献 / 获取支持** | [Contributing](CONTRIBUTING.md) · [Support](SUPPORT.md) |
+| **安全报告** | [Security Policy](SECURITY.md) · [私密漏洞报告](https://github.com/W-SING-HUNG/Eremite/security/advisories/new) |
 
-Host owns **UI、policy、authorization、workspace isolation、routing、validation、persistence、File Lifecycle、Run History**。Supplier Core 只提供 headless capability；其技术注册表不赋予 Host 授权。业务模块通过公开服务交互，AI 通过 Host-owned adapters 访问上下文。
+已知限制见[正式发行说明](docs/releases/v1.7.0.md)：`source-map-js@1.2.1` 的 **HIGH** 安全公告仍未修复，Eremite 中的利用可达性尚未验证；真实外部 AI Provider 行为尚未完成验收，任意长路径下的 LibreOffice 默认运行环境仍有待验证。运行配置与缓解方式见[工具运行环境](docs/tool-runtime.md)。
 
-更多细节见[架构](docs/architecture.md)、[当前公共状态](docs/PUBLIC-STATE.md)和[运行及分发边界](docs/public-baseline.md)。
+## 许可证
 
-## Contributing
-
-小而聚焦的改动更容易审查。环境、测试和 Host-owned policy 要求见 [CONTRIBUTING.md](CONTRIBUTING.md)。
-
-## Support
-
-普通 bug 和使用问题请通过 GitHub Issues 提交，所需信息见 [SUPPORT.md](SUPPORT.md)。
-
-## Security
-
-安全问题请使用 [GitHub Private Vulnerability Reporting](https://github.com/W-SING-HUNG/Eremite/security/advisories/new)，不要在 public Issues 中披露敏感细节。报告规则见 [SECURITY.md](SECURITY.md)。
-
-## License
-
-自有 Eremite Host 内容采用 [Apache-2.0](LICENSE)。
-
-Copyright 2026 翁成航 (Chenghang Weng). 署名见 [NOTICE](NOTICE)。第三方依赖和 Supplier components 保留各自许可，详见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
-
-## v1.7.0
-
-v1.7.0 includes safe failed-Run Retry, explicit Project-root destinations, complete backup/WAL validation, bounded native runtime settings, Emerald Pulse V1/V1.1 and the Ask initialization Enter repair. Next remains locked to 16.3.8; FC runtime remains 1.1.3 / Sharp 0.35.5; PDF remains rc5 with external qpdf. This release preparation changes no dependency or Supplier bytes. See [v1.7.0 release notes](docs/releases/v1.7.0.md), including the retained source-map-js HIGH advisory and support limits. See [current support scope](docs/PUBLIC-STATE.md) and [runtime configuration](docs/tool-runtime.md).
+Eremite Host 自有代码以 **[Apache License 2.0](LICENSE)** 发布。正式作者署名见 [NOTICE](NOTICE)，第三方依赖与独立工具 Core 的许可证及声明见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。

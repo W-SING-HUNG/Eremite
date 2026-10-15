@@ -1,14 +1,14 @@
 # Eremite public support baseline
 
-The public maintenance source retains package version 1.6.1. PR #2 did not create a new software version, tag or Release; the existing published v1.6.1 remains unchanged. Canonical source: https://github.com/W-SING-HUNG/Eremite.
+The public Host source is version 1.7.0, including the completed maintenance, Emerald Pulse V1/V1.1 and Ask initialization Enter repair. The historical v1.6.1 tag remains unchanged. Canonical source: https://github.com/W-SING-HUNG/Eremite.
 
-Last Verified Date: **2026-10-15 (Asia/Shanghai; Emerald Pulse source/targeted local validation; historical PR #2 evidence below)**
+Last Verified Date: **2026-10-15 (Asia/Shanghai; v1.7.0 source and release boundaries; dated evidence below)**
 
 ## Current Version
 
 | Entry | Value | Boundary |
 | --- | --- | --- |
-| public-host-package | `1.6.1` | Public maintenance source; compared with package.json and both root lockfile versions. No new-version Release from PR #2. |
+| public-host-package | `1.7.0` | Public Host source-first distribution; compared with package.json and both root lockfile versions. Windows x64/Node 24 only; fixed Suppliers unchanged. See v1.7.0 release notes and live GitHub publication evidence. |
 | public-node-range | `>=24.15.0 <25` | Windows x64 and Node 24; no other platform or major is accepted. |
 
 ## Current Post-release Maintenance — 2026-10-13
@@ -58,17 +58,17 @@ Formal invocation and Retry resolve the checked executable again and pass only t
 
 ## Git / GitHub Source of Truth
 
-Public-information checks cover tracked files, staged bytes, fixed archives, submitted release/PR text and new commit messages/identities in CI. They preserve legal attribution and supported AI/dependency names; historical objects and hosting caches require separate review. See [public information checks](public-information.md).
+Public-information checks cover tracked files, staged bytes, fixed archives, submitted release/PR text and new commit messages/identities in CI. New author/committer addresses require GitHub no-reply identities, with release-account ownership and server-generated metadata checked separately. Legal attribution, supported AI/dependency/model names and synthetic content remain allowed; historical objects, hosting caches and external submission paths have separate limits. See [public information checks](public-information.md).
 
 Public maintenance uses accepted clean export, a reviewed PR, required strict Verify, squash merge and main CI. New-version publication is a separate authorized step. Live refs and CI are queried at GitHub; the SHAs below identify dated PR #2 events, not a permanently current main HEAD.
 
 ## Current Next Step
 
-PR #2's final candidate independent acceptance and public maintenance integration are complete. Continue maintenance of the preserved Host/Supplier boundaries and known FOLLOW-UPs through reviewed, validated changes. Any new software-version Release remains a separate, unexecuted publication step. Completed candidate acceptance and CI do not establish whole-product absence of defects, real external Provider recovery or broader screenshot/pixel acceptance.
+Maintain the v1.7.0 source-first support scope and preserved Host/Supplier boundaries and known FOLLOW-UPs through reviewed, validated changes. Publication evidence belongs to the versioned GitHub Release and its exact tag target. Completed candidate acceptance and CI do not establish whole-product absence of defects, real external Provider recovery or broader screenshot/pixel acceptance.
 
 ## In Progress
 
-PR #2's final product candidate completed independent acceptance and public integration for the manifest and events below. Those PASS records do not cover later documentation bytes. Documentation corrections establish summary accuracy through governance and CI; future product candidates require their own source-bound validation and acceptance. Known Risks remain open.
+PR #2's final product candidate completed independent acceptance and public integration for the manifest and events below. Those PASS records do not cover later documentation bytes. v1.7.0 combines the already integrated maintenance, Emerald Pulse and Ask repair; its release gate and security disposition are recorded in [release notes](releases/v1.7.0.md). Documentation corrections establish summary accuracy through governance and CI; future product candidates require their own source-bound validation and acceptance. Known Risks remain open.
 
 ## Historical PR #2 acceptance and integration — 2026-10-13
 
@@ -88,6 +88,6 @@ These completed acceptance and integration records apply to the identified PR #2
 
 ## Known Risks
 
-FOLLOW-UP: source-map-js 1.2.1 production-transitive HIGH advisory retains its security classification; Eremite exploit reachability is NOT VERIFIED. No remediation or zero-risk claim is made here. Default arbitrary long LibreOffice profiles and the native initialization cause remain bounded by the explicit short-root mitigation. Backup appVersion metadata retains the historical 1.3.0 value; compatibility depends on format, migration checksums and file integrity. At 375px with no file selected, Ask may require scrolling below the initial viewport; initial-viewport reachability remains a separate mobile usability FOLLOW-UP.
+FOLLOW-UP: source-map-js 1.2.1 production-transitive HIGH advisory [GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q) retains its security classification; upstream 1.2.2 is patched. Eremite exploit reachability is NOT VERIFIED. No remediation or zero-risk claim is made here. Default arbitrary long LibreOffice profiles and the native initialization cause remain bounded by the explicit short-root mitigation. Backup appVersion metadata retains the historical 1.3.0 value; compatibility depends on format, migration checksums and file integrity. At 375px with no file selected, Ask may require scrolling below the initial viewport; initial-viewport reachability remains a separate mobile usability FOLLOW-UP.
 
 See [documentation boundary](public-baseline.md), [runtime configuration](tool-runtime.md), [backup](backup-and-restore.md), [security policy](../SECURITY.md) and [third-party inventory](../THIRD-PARTY-NOTICES.md).

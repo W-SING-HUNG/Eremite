@@ -3,7 +3,8 @@
 import { useId, useRef, type RefObject } from "react";
 import { X } from "lucide-react";
 import { IconButton } from "@/app/_components/ui/button";
-import { OverlayPortal, useDismissableLayer, useFocusScope } from "@/app/_components/ui/overlay";
+import { OverlayInteractionContext, OverlayPortal, useDismissableLayer, useFocusScope } from "@/app/_components/ui/overlay";
+import { useExitPresence } from "@/app/_components/ui/use-exit-presence";
 
 type DialogProps = {
   open: boolean;
@@ -24,6 +25,7 @@ export function Dialog({
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const descriptionId = useId();
+  const present = useExitPresence(open);
   const layerId = useDismissableLayer({
     open,
     panelRef,
@@ -33,9 +35,9 @@ export function Dialog({
     returnFocus: true,
   });
   useFocusScope({ open, panelRef, layerId });
-  if (!open) return null;
+  if (!present) return null;
   return <OverlayPortal>
-    <div className="ui-dialog-backdrop" data-overlay-layer={layerId}>
+    <div className="ui-dialog-backdrop" ref={surface => { if (surface) surface.inert = !open; }} data-overlay-layer={layerId} data-state={open ? "open" : "closed"} aria-hidden={!open || undefined}>
       <div
         ref={panelRef}
         className={`ui-dialog ${hideHeader ? "ui-dialog--chromeless" : ""} ${className}`.trim()}
@@ -45,9 +47,11 @@ export function Dialog({
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
       >
+        <OverlayInteractionContext.Provider value={open}>
         {hideHeader ? <h2 className="sr-only" id={titleId}>{title}</h2> : <header className="ui-dialog__header"><div><h2 id={titleId}>{title}</h2>{description && <p id={descriptionId}>{description}</p>}</div>{dismissible && <IconButton label="关闭" onClick={onClose}><X size={18} /></IconButton>}</header>}
         {hideHeader && description && <p className="sr-only" id={descriptionId}>{description}</p>}
         <div className="ui-dialog__body">{children}</div>
+        </OverlayInteractionContext.Provider>
       </div>
     </div>
   </OverlayPortal>;

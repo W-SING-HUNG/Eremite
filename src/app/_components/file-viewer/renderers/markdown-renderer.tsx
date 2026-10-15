@@ -30,7 +30,7 @@ export function MarkdownRenderer({ sourceUrl, onControlsChange, onFailure }: Ren
   }, [onFailure, sourceUrl]);
 
   if (content === null) return <div className="viewer-loading" role="status"><span className="viewer-spinner" /><p>正在解析 Markdown…</p></div>;
-  return <article className="markdown-renderer" style={{ fontSize: `${zoom}%` }}><Markdown remarkPlugins={[remarkGfm]} skipHtml components={{
+  return <article className="markdown-renderer" style={{ fontSize: `calc(var(--type-reading) * ${zoom / 100})` }}><Markdown remarkPlugins={[remarkGfm]} skipHtml components={{
     a: ({ href, children }) => <a href={safeExternalUrl(href)} target="_blank" rel="noreferrer">{children}</a>,
     img: ({ alt }) => <span className="markdown-external-image">外部图片未加载{alt ? `：${alt}` : ""}</span>,
   }}>{content}</Markdown></article>;

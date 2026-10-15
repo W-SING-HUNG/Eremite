@@ -380,7 +380,7 @@ export function AskEremite() {
         {running && !streamed && !runningMessage && <article className="ask-message ask-message--assistant ask-message--waiting"><strong>Ask Eremite</strong><div className="ask-message-text">{statusText}</div></article>}
       </div>{!following && <button type="button" className="ask-to-latest" onClick={toLatest}><ArrowDown size={15} />回到最新</button>}</div>
       {running && toolTrail.length > 0 && !detail?.messages.some(message => message.run_id === active.current?.runId && message.activities.length > 0) && <ActivityTrail activities={toolTrail} live />}
-      <div className={`ask-status${running ? ' ask-status--running' : ''}`} role="status" aria-live="polite"><span className="ask-status__mark" aria-hidden="true" />{statusText}</div>
+      <div className={`ask-status${running ? ' ask-status--running' : ''}`} data-phase={running && phase === 'idle' ? 'waiting' : phase} role="status" aria-live="polite"><span className="ask-status__indicator" aria-hidden="true">{running && (phase === 'waiting' || phase === 'tool' || phase === 'idle') ? <span className="ask-waiting-dots"><i /><i /><i /></span> : <span className="ask-status__mark" />}</span><span>{statusText}</span></div>
       {error && <p className="ask-error" role="alert">{aiChatErrorMessage(error)}</p>}
       <form className="ask-compose" onSubmit={event => { event.preventDefault(); void send(); }}>
         <label className="sr-only" htmlFor="ask-message">向 Ask Eremite 提问</label>

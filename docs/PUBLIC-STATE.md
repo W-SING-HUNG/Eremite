@@ -2,7 +2,7 @@
 
 The public maintenance source retains package version 1.6.1. PR #2 did not create a new software version, tag or Release; the existing published v1.6.1 remains unchanged. Canonical source: https://github.com/W-SING-HUNG/Eremite.
 
-Last Verified Date: **2026-10-13 (Asia/Shanghai; PR #2 acceptance, integration and CI evidence)**
+Last Verified Date: **2026-10-15 (Asia/Shanghai; Emerald Pulse source/targeted local validation; historical PR #2 evidence below)**
 
 ## Current Version
 
@@ -19,6 +19,16 @@ Last Verified Date: **2026-10-13 (Asia/Shanghai; PR #2 acceptance, integration a
 | pdf-tools-root-destination | RESOLVED | Only omitted/undefined defaults to the first source Folder. Explicit null/empty selects Project root for all five operations and split outputs. Retry uses the same bounded v2 path digest and compatible v1 validation; the 65,536-character input limit remains unchanged. Confirmation uses the same v1/v2 display rules without changing server eligibility or reintroducing breadcrumb arrays. |
 
 Retry creates a new Run and output namespace, preserves parent history and fixed source versions, rejects changed policy/destination, and checks Run state before File Lifecycle commit. Failed single-file creation cleans only a newly promoted blob confirmed absent from blob metadata under the writer lease; pre-existing/shared bytes and uncertain references are preserved. Retry Workspace and Retry UI changes require public state review. Backup verification compares the complete retained blob set, migration checksums and actual hashes, and rejects uncopied non-empty WAL. Original versions remain immutable.
+
+## Current UI — Emerald Pulse
+
+The dark-green presentation uses shared motion tokens, restrained emerald/cyan highlights, Skeleton shimmer and bounded overlay/message transitions. Reduced-motion disables decorative animation, while closing overlays become inert immediately and retain keyboard/focus behavior. Waiting and Tool phases share a stable three-dot indicator with accurate phase/status text; streamed Markdown is not buffered.
+
+Chinese-first local fonts, 15px list text and 16px reading text improve everyday reading. Mobile resource/action titles use two lines, Inspector headings have bounded lines and retain full accessible names, and Markdown/Text Viewer zoom derives from the reading token. Existing image loaded/zoom/pan behavior is preserved without duplicate image layers.
+
+The UI source bytes match the locally verified candidate. Local production Chrome checks covered 1440/375px, real button hit targets, complete accessible titles, completion/undo, focus restoration, reading sizes, zoom and reset. Earlier bounded motion/reduced-motion checks also passed. These are local checks, not a new independent acceptance or release claim; public CI establishes integration with this repository's retained Host/Supplier baseline. See [UI scope and validation](emerald-pulse-ui.md).
+
+FOLLOW-UP: immediately pressing Enter while Ask initializes can retain the input without sending; this pre-existing behavior is outside the presentation change.
 
 ## Current Architecture
 

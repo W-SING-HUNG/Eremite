@@ -28,7 +28,7 @@ Chinese-first local fonts, 15px list text and 16px reading text improve everyday
 
 The UI source bytes match the locally verified candidate. Local production Chrome checks covered 1440/375px, real button hit targets, complete accessible titles, completion/undo, focus restoration, reading sizes, zoom and reset. Earlier bounded motion/reduced-motion checks also passed. These are Codex local checks, not a new independent acceptance or release claim; public CI establishes integration with this repository's retained Host/Supplier baseline. See [UI scope and validation](emerald-pulse-ui.md).
 
-FOLLOW-UP: immediately pressing Enter while Ask initializes can retain the input without sending; this pre-existing behavior is outside the presentation change.
+RESOLVED (2026-10-15): a non-composing Enter during Ask initialization records one explicit send request, then dispatches once after the Provider and selected conversation load successfully. Initialization failure or an unavailable Provider preserves input with feedback. Editing, closing, context changes or selecting another conversation cancels the queued request; obsolete responses cannot overwrite the current selection. Shift+Enter, composition/229, Send, streaming and Stop retain their existing contracts. Local production Chrome regression passed all 12 controlled-response scenarios, including composition events. This is a focused composer bug fix with no presentation redesign, schema, Runtime, Tool, Supplier or version change. See [initialization Enter validation](ask-initialization-enter.md).
 
 ## Current Architecture
 

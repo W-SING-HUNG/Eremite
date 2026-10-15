@@ -33,6 +33,8 @@ export function AskEremite() {
   const [activity, setActivity] = useState<AIActivity | null>(null);
   const [toolTrail, setToolTrail] = useState<AIActivity[]>([]);
   const [loading, setLoading] = useState(false);
+  const [initialization, setInitialization] = useState<'loading' | 'ready' | 'failed'>('loading');
+  const [queuedSend, setQueuedSend] = useState<{ text: string; selection: number; contextKey: string } | null>(null);
   const [error, setError] = useState('');
   const [historyMore, setHistoryMore] = useState(false);
   const [streamed, setStreamed] = useState<{ id: string; text: string } | null>(null);
@@ -51,37 +53,46 @@ export function AskEremite() {
   const targetPending = useRef(false);
   const activityCounts = useRef(new Map<AIActivity['kind'], number>());
   const selection = useRef(0);
+  const panelOpen = useRef(false);
+  const queued = useRef(false);
   const mounted = useRef(true);
   const transcript = useRef<HTMLDivElement>(null);
   const [following, setFollowing] = useState(true);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const contextKey = JSON.stringify(context.target);
+  const clearQueuedSend = useCallback(() => { queued.current = false; setQueuedSend(null); }, []);
+  const openAsk = useCallback(() => {
+    if (panelOpen.current) return;
+    panelOpen.current = true; ++selection.current; clearQueuedSend();
+    setInitialization('loading'); setLoading(true); setError(''); setOpen(true);
+  }, [clearQueuedSend]);
   useEffect(() => {
-    const openFromInspector = () => setOpen(true);
+    const openFromInspector = () => openAsk();
     window.addEventListener('eremite:open-ask-from-inspector', openFromInspector);
     return () => window.removeEventListener('eremite:open-ask-from-inspector', openFromInspector);
-  }, []);
-  const closeAsk = () => { setOpen(false); window.dispatchEvent(new Event('eremite:ask-closed')); };
+  }, [openAsk]);
+  const closeAsk = () => { panelOpen.current = false; ++selection.current; clearQueuedSend(); setOpen(false); window.dispatchEvent(new Event('eremite:ask-closed')); };
 
-  const refreshList = useCallback(async (offset = 0) => {
+  const refreshList = useCallback(async (offset = 0, version = selection.current) => {
     const result = await api<{ threads: AIThread[]; provider: AIProviderStatus }>(offset ? `?offset=${offset}` : '');
-    if (!mounted.current) return result;
+    if (!mounted.current || version !== selection.current) return result;
     setThreads(previous => offset ? [...previous, ...result.threads.filter(item => !previous.some(old => old.id === item.id))] : result.threads);
     setHistoryMore(result.threads.length === 40); setProvider(result.provider);
     return result;
   }, []);
 
   const loadThread = useCallback(async (id: string) => {
-    const version = ++selection.current; setLoading(true); setError(''); setStreamed(null); setDraftErrors({}); setUpdateErrors({}); setToolRunErrors({}); setTargetErrors({}); setToolTrail([]); setFollowing(true);
+    const version = ++selection.current; clearQueuedSend(); setInitialization('loading'); setLoading(true); setError(''); setStreamed(null); setDraftErrors({}); setUpdateErrors({}); setToolRunErrors({}); setTargetErrors({}); setToolTrail([]); setFollowing(true);
     try {
       const result = await api<AIThreadDetail>(`?threadId=${id}`);
-      if (mounted.current && version === selection.current) setDetail(result);
-    } catch (failure) { if (mounted.current && version === selection.current) setError(failure instanceof Error ? failure.message : 'ai_generation_failed'); }
+      if (mounted.current && version === selection.current) { setDetail(result); setInitialization('ready'); }
+    } catch (failure) { if (mounted.current && version === selection.current) { clearQueuedSend(); setInitialization('failed'); setError(failure instanceof Error ? failure.message : 'ai_generation_failed'); } }
     finally { if (mounted.current && version === selection.current) setLoading(false); }
-  }, []);
+  }, [clearQueuedSend]);
 
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; active.current?.controller.abort(); };
+    return () => { mounted.current = false; ++selection.current; active.current?.controller.abort(); };
   }, []);
 
   useEffect(() => {
@@ -103,15 +114,21 @@ export function AskEremite() {
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
+    const version = selection.current;
+    const isCurrent = () => !cancelled && mounted.current && version === selection.current;
     setLoading(true);
-    void refreshList().then(async result => {
-      if (!cancelled && detail) await loadThread(detail.thread.id);
-      else if (!cancelled && result.threads[0]) await loadThread(result.threads[0].id);
-    }).catch(() => { if (!cancelled) setError('ai_generation_failed'); }).finally(() => { if (!cancelled) setLoading(false); });
+    void refreshList(0, version).then(async result => {
+      if (!isCurrent()) return;
+      const id = detail?.thread.id ?? result.threads[0]?.id;
+      const loaded = id ? await api<AIThreadDetail>(`?threadId=${id}`) : null;
+      if (!isCurrent()) return;
+      setDetail(loaded); setStreamed(null); setToolTrail([]); setFollowing(true);
+      setInitialization('ready');
+    }).catch(() => { if (isCurrent()) { clearQueuedSend(); setInitialization('failed'); setError('ai_generation_failed'); } }).finally(() => { if (isCurrent()) setLoading(false); });
     return () => { cancelled = true; };
     // Refresh when the panel opens; selection is otherwise explicit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, refreshList, loadThread]);
+  }, [open, refreshList, clearQueuedSend]);
 
   const runningMessage = detail?.messages.find(message => message.status === 'running');
   useEffect(() => {
@@ -127,8 +144,9 @@ export function AskEremite() {
   }, [busy, runningMessage, phase]);
   useEffect(() => {
     if (!open || (!busy && !runningMessage) || !detail) return;
+    const version = selection.current;
     const timer = window.setInterval(() => {
-      void api<AIThreadDetail>(`?threadId=${detail.thread.id}`).then(result => { if (mounted.current) setDetail(result); }).catch(() => setError('ai_generation_failed'));
+      void api<AIThreadDetail>(`?threadId=${detail.thread.id}`).then(result => { if (mounted.current && version === selection.current) setDetail(result); }).catch(() => { if (mounted.current && version === selection.current) setError('ai_generation_failed'); });
     }, 1500);
     return () => window.clearInterval(timer);
   }, [open, busy, runningMessage, detail?.thread.id]);
@@ -151,20 +169,48 @@ export function AskEremite() {
 
   async function newChat() {
     if (pending.current) return;
+    const version = ++selection.current; clearQueuedSend(); setInitialization('loading');
     pending.current = true; setLoading(true); setError('');
     try {
       const thread = await api<AIThread>('', { action: 'create' });
+      if (!mounted.current || version !== selection.current) return;
       setDetail({ thread, messages: [], hasOlder: false }); setStreamed(null); setToolTrail([]); setFollowing(true); setText('');
-      await refreshList();
+      setInitialization('ready'); await refreshList(0, version);
       inputRef.current?.focus();
-    } catch { setError('ai_generation_failed'); }
-    finally { pending.current = false; setLoading(false); }
+    } catch { if (mounted.current && version === selection.current) { clearQueuedSend(); setInitialization('failed'); setError('ai_generation_failed'); } }
+    finally { pending.current = false; if (mounted.current && version === selection.current) setLoading(false); }
   }
 
-  async function send() {
-    if (pending.current || !text.trim() || !provider?.configured || runningMessage) return;
+  function requestSend() {
+    if (pending.current || !text.trim() || queued.current) return;
+    if (initialization === 'loading' || loading) {
+      queued.current = true;
+      setQueuedSend({ text: text.trim(), selection: selection.current, contextKey });
+      return;
+    }
+    if (initialization === 'failed') { setError('ai_generation_failed'); return; }
+    if (!provider?.configured) { setError('ai_unavailable'); return; }
+    if (runningMessage) return;
+    void send();
+  }
+
+  useEffect(() => {
+    if (!queuedSend) return;
+    if (!open || queuedSend.selection !== selection.current || queuedSend.contextKey !== contextKey) { clearQueuedSend(); return; }
+    if (initialization === 'loading' || loading) return;
+    clearQueuedSend();
+    if (initialization === 'failed') return;
+    if (!provider?.configured) { setError('ai_unavailable'); return; }
+    if (runningMessage) { setError('ai_run_active'); return; }
+    void send(queuedSend.text);
+    // A queued request is consumed once, using the fully loaded current selection.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queuedSend, open, initialization, loading, provider, runningMessage, contextKey, clearQueuedSend]);
+
+  async function send(submitted = text.trim()) {
+    if (!panelOpen.current || loading || initialization !== 'ready' || pending.current || !submitted || !provider?.configured || runningMessage) return;
+    const version = selection.current;
     pending.current = true; activityCounts.current.clear(); setBusy(true); setPhase('sending'); setActivity(null); setToolTrail([]); setError(''); setStreamed(null); setFollowing(true);
-    const submitted = text.trim();
     let thread = detail?.thread;
     const controller = new AbortController();
     const current = { controller, threadId: thread?.id ?? '', runId: undefined as string | undefined };
@@ -172,6 +218,7 @@ export function AskEremite() {
     try {
       if (!thread) thread = await api<AIThread>('', { action: 'create' });
       controller.signal.throwIfAborted();
+      if (!mounted.current || version !== selection.current) return;
       current.threadId = thread.id;
       setText('');
       const optimistic: AIChatMessage = { id: crypto.randomUUID(), thread_id: thread.id, ordinal: (detail?.messages.at(-1)?.ordinal ?? 0) + 1, role: 'user', content: submitted, created_at: new Date().toISOString(), run_id: null, status: null, error_code: null, model: null, sources: [], activities: [], actionDrafts: [], actionUpdates: [], actionDisambiguations: [], toolRunProposals: [] };
@@ -200,15 +247,17 @@ export function AskEremite() {
         onError: code => { if (mounted.current) setError(code); },
       });
     } catch (failure) {
-      if (mounted.current) {
+      if (mounted.current && version === selection.current) {
         setError(active.current?.controller.signal.aborted ? 'ai_cancelled' : failure instanceof Error ? failure.message : 'ai_generation_failed');
         if (!active.current?.runId) setText(previous => previous || submitted);
       }
     } finally {
       active.current = null;
-      if (mounted.current && thread) {
-        try { setDetail(await api<AIThreadDetail>(`?threadId=${thread.id}`)); setStreamed(null); setToolTrail([]); await refreshList(); }
-        catch { setError('ai_generation_failed'); }
+      if (mounted.current && thread && version === selection.current) {
+        try {
+          const refreshed = await api<AIThreadDetail>(`?threadId=${thread.id}`);
+          if (mounted.current && version === selection.current) { setDetail(refreshed); setStreamed(null); setToolTrail([]); await refreshList(0, version); }
+        } catch { if (mounted.current && version === selection.current) setError('ai_generation_failed'); }
       }
       pending.current = false;
       if (mounted.current) { setBusy(false); setPhase('idle'); setActivity(null); activityCounts.current.clear(); inputRef.current?.focus(); }
@@ -332,6 +381,7 @@ export function AskEremite() {
     : phase === 'tool' && activity?.state === 'started' ? activityLabel[activity.kind]
     : phase === 'streaming' ? '正在回复…'
     : running ? '正在思考…'
+    : queuedSend ? '已记录发送请求，正在读取会话…'
     : loading ? '正在读取会话…'
     : lastAssistant?.status === 'completed' ? '回复已完成'
     : lastAssistant?.status === 'cancelled' ? '已停止，内容已保留'
@@ -343,7 +393,7 @@ export function AskEremite() {
         : ['总结最近的资料', '查找待办行动', '创建一个任务'];
 
   return <>
-    <button className="ask-eremite-trigger ui-button ui-button--secondary" type="button" onClick={() => setOpen(true)} aria-label="打开 Ask Eremite"><MessageCircle size={18} />Ask Eremite</button>
+    <button className="ask-eremite-trigger ui-button ui-button--secondary" type="button" onClick={openAsk} aria-label="打开 Ask Eremite"><MessageCircle size={18} />Ask Eremite</button>
     <Dialog open={open} onClose={closeAsk} title="Ask Eremite" description="可以读取资料并提出待确认的任务或文件操作；只有你确认后才会执行。" className="ask-eremite-panel">
       <div className="ask-toolbar">
         <Select label="历史会话" placeholder="历史会话" value={detail?.thread.id ?? ''} disabled={busy || loading} options={threads.map(thread => ({ value: thread.id, label: thread.title }))} onValueChange={id => void loadThread(id)} />
@@ -354,7 +404,7 @@ export function AskEremite() {
       {provider && !provider.configured && <p className="ask-notice">AI Provider 尚未配置或需要重新输入 API Key。请前往设置 → AI。历史会话仍可查看。</p>}
       <div className="ask-transcript"><div ref={transcript} className="ask-messages" aria-label="对话消息" tabIndex={0} onScroll={trackScroll}>
         {detail?.hasOlder && <Button disabled={loading || busy} onClick={() => void loadOlder()}>加载更早的消息</Button>}
-        {!detail?.messages.length && !busy && <div className="ask-empty"><MessageCircle size={28} /><h3>从{context.label}开始</h3><p>可以先问一个问题，或试试下面的提议。</p><div className="ask-suggestions">{suggestions.map(suggestion => <button type="button" key={suggestion} onClick={() => { setText(suggestion); inputRef.current?.focus(); }}>{suggestion}</button>)}</div></div>}
+        {!detail?.messages.length && !busy && <div className="ask-empty"><MessageCircle size={28} /><h3>从{context.label}开始</h3><p>可以先问一个问题，或试试下面的提议。</p><div className="ask-suggestions">{suggestions.map(suggestion => <button type="button" key={suggestion} onClick={() => { clearQueuedSend(); setText(suggestion); inputRef.current?.focus(); }}>{suggestion}</button>)}</div></div>}
         {detail?.messages.map(message => <article className={`ask-message ask-message--${message.role}`} key={message.id}>
           <strong>{message.role === 'user' ? '你' : 'Ask Eremite'}</strong>
           <div className="ask-message-text"><AskMessageContent role={message.role} content={message.toolRunProposals.length > 0 ? message.toolRunProposals.some(item => item.lifecycle === 'pending')
@@ -381,10 +431,10 @@ export function AskEremite() {
       </div>{!following && <button type="button" className="ask-to-latest" onClick={toLatest}><ArrowDown size={15} />回到最新</button>}</div>
       {running && toolTrail.length > 0 && !detail?.messages.some(message => message.run_id === active.current?.runId && message.activities.length > 0) && <ActivityTrail activities={toolTrail} live />}
       <div className={`ask-status${running ? ' ask-status--running' : ''}`} data-phase={running && phase === 'idle' ? 'waiting' : phase} role="status" aria-live="polite"><span className="ask-status__indicator" aria-hidden="true">{running && (phase === 'waiting' || phase === 'tool' || phase === 'idle') ? <span className="ask-waiting-dots"><i /><i /><i /></span> : <span className="ask-status__mark" />}</span><span>{statusText}</span></div>
-      {error && <p className="ask-error" role="alert">{aiChatErrorMessage(error)}</p>}
-      <form className="ask-compose" onSubmit={event => { event.preventDefault(); void send(); }}>
+      {error && <p className="ask-error" role="alert">{initialization === 'failed' ? '会话初始化失败，输入已保留。请关闭后重新打开，再发送。' : aiChatErrorMessage(error)}</p>}
+      <form className="ask-compose" onSubmit={event => { event.preventDefault(); requestSend(); }}>
         <label className="sr-only" htmlFor="ask-message">向 Ask Eremite 提问</label>
-        <textarea ref={inputRef} data-overlay-initial-focus id="ask-message" placeholder={running ? '可以先写下一条消息…' : '输入问题…'} value={text} maxLength={8000} onChange={event => setText(event.target.value)} rows={3} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (!loading && !running) void send(); } }} />
+        <textarea ref={inputRef} data-overlay-initial-focus id="ask-message" placeholder={running ? '可以先写下一条消息…' : '输入问题…'} value={text} maxLength={8000} onChange={event => { clearQueuedSend(); setText(event.target.value); }} rows={3} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) { event.preventDefault(); requestSend(); } }} />
         <div className="ask-compose-actions"><small>{running ? '完成当前回复后即可发送下一条' : 'Enter 发送 · Shift + Enter 换行'}</small><div className="ask-compose__primary">{running ? <Button type="button" onClick={() => void stop()} disabled={phase === 'stopping'}><Square size={16} />{phase === 'stopping' ? '正在停止…' : '停止'}</Button> : <Button type="submit" variant="primary" disabled={loading || !provider?.configured || !text.trim()}><Send size={16} />发送</Button>}</div></div>
       </form>
     </Dialog>

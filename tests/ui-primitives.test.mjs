@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { assertThemeReadability } from "./ui-color-contract.mjs";
 import { calculateFloatingPosition } from "@/app/_lib/floating-position";
 import { clearOverlayStackForTests, isTopOverlay, overlayDepth, registerOverlay } from "@/app/_lib/overlay-stack";
 import { detectShortcutPlatform, formatShortcut } from "@/app/_lib/platform-shortcut";
@@ -88,11 +89,26 @@ assert.match(styles, /--z-dialog:\s*80;[\s\S]*--z-popover:\s*90;[\s\S]*--z-toast
 for (const state of [":hover", ":focus-visible", ":active", "[aria-selected=\"true\"]", ":checked", ":disabled", "[aria-invalid=\"true\"]", "[aria-busy=\"true\"]"]) {
   assert.ok(styles.includes(state), `missing formal control state ${state}`);
 }
-assert.ok(contrast("#e9eeeb", "#111514") >= 4.5, "primary text meets WCAG AA contrast");
-assert.ok(contrast("#a6b0ab", "#111514") >= 4.5, "secondary text meets WCAG AA contrast");
-assert.ok(contrast("#87938d", "#222a27") >= 4.5, "faint text remains readable on the lightest formal dark surface");
-assert.ok(contrast("#f4fff5", "#487f54") >= 4.5, "primary button text meets WCAG AA contrast");
-assert.ok(contrast("#ffffff", "#a84840") >= 4.5, "danger button text meets WCAG AA contrast");
+const paletteToken = (name) => {
+  const value = new RegExp(`${name}:\\s*(#[\\da-f]{6})`, "i").exec(styles)?.[1];
+  assert.ok(value, `missing color token ${name}`);
+  return value;
+};
+assertThemeReadability(styles);
+assert.ok(contrast(paletteToken("--color-text"), paletteToken("--color-canvas")) >= 4.5, "primary text meets WCAG AA contrast");
+assert.ok(contrast(paletteToken("--color-text-muted"), paletteToken("--color-canvas")) >= 4.5, "secondary text meets WCAG AA contrast");
+assert.ok(contrast(paletteToken("--color-text-faint"), paletteToken("--color-surface-3")) >= 4.5, "faint text remains readable on the lightest formal dark surface");
+for (const name of ["--color-accent-strong", "--color-accent-hover"]) assert.ok(contrast("#f4fff5", paletteToken(name)) >= 4.5, "primary button text meets WCAG AA contrast in default and hover states");
+const opacityToken = (name) => Number(new RegExp(`${name}:\\s*([\\d.]+)`).exec(styles)?.[1]);
+const sheen = opacityToken("--control-sheen-opacity");
+const sweep = opacityToken("--control-sweep-opacity");
+assert.ok(sheen >= 0 && sheen <= 1 && sweep >= 0 && sweep <= 1, "control highlight alpha tokens are bounded");
+for (const name of ["--color-accent-strong", "--color-accent-hover"]) {
+  const peakBackground = mix("#e0f3e6", mix("#e0f3e6", paletteToken(name), sheen), sweep);
+  const peakText = mix("#e0f3e6", "#f4fff5", sweep);
+  assert.ok(contrast(peakText, peakBackground) >= 4.5, "even conservatively stacked highlight peaks retain AA text contrast");
+}
+assert.ok(contrast("#ffffff", paletteToken("--color-danger-strong")) >= 4.5, "danger button text meets WCAG AA contrast");
 assert.doesNotMatch(styles, /appearance:\s*auto/);
 assert.doesNotMatch(styles, /\.palette-backdrop|\.restore-confirmation|\.viewer-more\b/, "replaced overlay implementations must not survive in CSS");
 
@@ -120,6 +136,10 @@ async function walk(directory) {
 function contrast(foreground, background) {
   const [a, b] = [foreground, background].map(luminance);
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+}
+
+function mix(foreground, background, alpha) {
+  return "#" + [1, 3, 5].map(index => Math.round(parseInt(foreground.slice(index, index + 2), 16) * alpha + parseInt(background.slice(index, index + 2), 16) * (1 - alpha)).toString(16).padStart(2, "0")).join("");
 }
 
 function luminance(hex) {

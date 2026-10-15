@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { assertThemeReadability } from "./ui-color-contract.mjs";
 
 const read = (relative) => readFile(new URL(`../${relative}`, import.meta.url), "utf8");
 const [styles, inspector, mediaQuery, library, actions, automations, projectContent, tree, mutationForm, select, searchScope, shell, ask, createAction, markdown, text, docx, pdf] = await Promise.all([
@@ -46,7 +47,9 @@ assert.match(inspector, /onDismiss: onClose, modal: true, returnFocus: true/u);
 assert.match(styles, /\.viewer-back \{[^}]*min-width: 32px;[^}]*min-height: 32px;/);
 assert.match(styles, /\.tree-expander \{[^}]*width: 24px;[^}]*height: 30px;/);
 assert.match(styles, /\.tag-chip > button \{[^}]*width: 24px;[^}]*height: 24px;/);
-assert.match(styles, /--color-text-faint: #87938d/);
+assertThemeReadability(styles);
+assert.throws(() => assertThemeReadability(styles.replace(/--color-text-faint:\s*[^;]+;/, '--color-text-faint: #23382e;')), /contrast/, 'a syntactically valid but unreadable faint color is rejected');
+assert.throws(() => assertThemeReadability(styles.replace(/--color-text-faint:\s*[^;]+;/, '--color-text-faint: var(--color-accent);')), /neutral|hierarchy|metadata/, 'an accent cannot replace the metadata role');
 assert.match(styles, /\.danger-text \{ color: var\(--color-danger\)/);
 assert.doesNotMatch(styles, /workspace-split\.has-detail:not\(\.previewing\)::after|run-inspector-backdrop|run-inspector-host/);
 

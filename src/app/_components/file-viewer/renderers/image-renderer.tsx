@@ -27,6 +27,7 @@ export function ImageRenderer({ descriptor, sourceUrl, onControlsChange, onFailu
 
   return <div
     className={`image-renderer${loaded ? " loaded" : ""}`}
+    aria-busy={!loaded}
     style={{ cursor: zoom > 100 ? (dragRef.current ? "grabbing" : "grab") : "default", touchAction: "none" }}
     onPointerDown={(event) => {
       if (zoom <= 100 || event.button !== 0) return;
@@ -42,7 +43,7 @@ export function ImageRenderer({ descriptor, sourceUrl, onControlsChange, onFailu
     onPointerUp={endDrag}
     onPointerCancel={endDrag}
   >
-    {!loaded && <span className="viewer-spinner" />}
+    {!loaded && <div className="viewer-image-placeholder" role="status"><span className="viewer-spinner" aria-hidden="true" /><span>正在载入图片…</span></div>}
     {/* Browser decoding is deliberate here; active image formats such as SVG are not in the registry. */}
     {/* eslint-disable-next-line @next/next/no-img-element */}
     <img src={sourceUrl} alt={descriptor.title} draggable={false} style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom / 100})` }} onLoad={(event) => {

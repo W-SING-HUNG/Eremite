@@ -112,7 +112,7 @@ try {
     assert.equal(await first.evaluate(element => document.activeElement === element), true);
     await page.keyboard.press("Escape"); await dialog.waitFor({ state: "hidden" }); await focusedTrigger();
 
-    // Qoder may hide its webview: return focus must not depend on a future frame.
+    // Hidden browser views may suspend frames; return focus must not depend on a future frame.
     await trigger.click(); await dialogReady(); await page.keyboard.press("Tab");
     await page.evaluate(() => {
       const nativeFrame = window.requestAnimationFrame.bind(window);

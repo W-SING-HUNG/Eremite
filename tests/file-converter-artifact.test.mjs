@@ -48,7 +48,12 @@ assert.ok(tarEntries.has("package/dist/native/bin/fc-movefile.exe"));
 assert.equal(createHash("sha256").update(tarEntries.get("package/dist/native/bin/fc-movefile.exe")).digest("hex"), FILE_CONVERTER_NATIVE_HELPER_SHA256, "runtime helper digest comes from the fixed formal artifact");
 assert.ok(tarEntries.has("package/dist/cli/index.js"));
 assert.ok(tarEntries.has("package/tool-contract.json"));
-assert.equal(entries.some((entry) => /(^|\/)(src|tests|dev-harness|node_modules|\.workbuddy|accepted-capabilities)(\/|$)/u.test(entry)), false);
+assert.equal(entries.some((entry) => /(^|\/)(src|tests|dev-harness|node_modules|accepted-capabilities)(\/|$)/u.test(entry)), false);
+const hiddenDevelopmentPath = /(^|\/)\.[^/]+\/|(^|\/)\.[^/.]+$/u;
+assert.equal(hiddenDevelopmentPath.test("package/.private/config.json"), true);
+assert.equal(hiddenDevelopmentPath.test("package/.private"), true);
+assert.equal(hiddenDevelopmentPath.test("package/dependency/.example.js"), false);
+assert.equal(entries.some((entry) => hiddenDevelopmentPath.test(entry)), false);
 assert.equal(entries.some((entry) => /qa-stub|phase.?5|fc-cli|workspace\/publish\./iu.test(entry)), false);
 
 const manifest = JSON.parse(tarEntries.get("package/package.json").toString("utf8"));

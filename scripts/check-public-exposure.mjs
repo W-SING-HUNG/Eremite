@@ -22,6 +22,10 @@ function publicEmail(value) {
     || domain === "users.noreply.github.com" || lower === "noreply@github.com";
 }
 
+function commitPrivacyEmail(value) {
+  return /^[^@\s<>]+@users\.noreply\.github\.com$/iu.test(value) || value.toLowerCase() === "noreply@github.com";
+}
+
 export function scanPublicText(location, text, { thirdPartyAttribution = false } = {}) {
   const findings = [];
   const policyDefinition = policyFiles.has(location);
@@ -103,8 +107,12 @@ export function checkPublicExposure({ cwd = process.cwd(), staged = false, textF
     for (const sha of commits) {
       const message = git("show", "-s", "--format=%B", sha).toString("utf8");
       findings.push(...scanPublicText("new commit " + sha.slice(0, 12), message));
-      const identity = git("show", "-s", "--format=%an <%ae>%n%cn <%ce>", sha).toString("utf8");
-      findings.push(...scanPublicText("new commit identity " + sha.slice(0, 12), identity));
+      const identity = git("show", "-s", "--format=%an%x00%ae%x00%cn%x00%ce", sha).toString("utf8").trimEnd().split("\0");
+      const location = "new commit identity " + sha.slice(0, 12);
+      findings.push(...scanPublicText(location, `${identity[0]} <${identity[1]}>\n${identity[2]} <${identity[3]}>`));
+      for (const [role, email] of [["author", identity[1]], ["committer", identity[3]]]) {
+        if (!email || !commitPrivacyEmail(email)) findings.push({ location, line: 1, rule: "commit-identity", role });
+      }
     }
   }
   return { files: filenames.length + extraFiles.length, findings };

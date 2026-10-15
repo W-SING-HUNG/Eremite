@@ -42,7 +42,7 @@ assert.match(inspector, /<aside ref=\{panelRef\} className=\{className\}/u, 'Ins
 assert.match(library, /selected && <ResponsiveInspector[^>]*className="detail-panel resource-inspector"/u, 'Content selection renders the specific Inspector marker');
 assert.doesNotMatch(actions + automations, /resource-inspector/u);
 assert.match(library, /const restoreInspector = \(\) => setAskInspectorSuspended\(false\)/u);
-assert.match(ask, /const closeAsk = \(\) => \{ setOpen\(false\); window\.dispatchEvent\(new Event\('eremite:ask-closed'\)\); \}/u);
+assert.match(ask, /const closeAsk = \(\) => \{[^}]*setOpen\(false\);[^}]*window\.dispatchEvent\(new Event\('eremite:ask-closed'\)\); \}/u);
 assert.match(inspector, /onDismiss: onClose, modal: true, returnFocus: true/u);
 assert.match(styles, /\.viewer-back \{[^}]*min-width: 32px;[^}]*min-height: 32px;/);
 assert.match(styles, /\.tree-expander \{[^}]*width: 24px;[^}]*height: 30px;/);

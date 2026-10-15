@@ -55,3 +55,7 @@ Supplier contract change 必须显式说明兼容影响，包括 Host adapters�
 普通问题见 [SUPPORT.md](SUPPORT.md)。安全问题必须通过
 [Private Vulnerability Reporting](https://github.com/W-SING-HUNG/Eremite/security/advisories/new)
 私密报告，不能放入 public Issues；详见 [SECURITY.md](SECURITY.md)。
+
+## Public information
+
+Run `npm.cmd run check:public-exposure` and review the staged diff before submitting source. Check a proposed PR/release body with `node scripts/check-public-exposure.mjs --text-file <file>`. Keep technical validation accurate, preserve license/attribution and avoid private operational details. See [public information checks](docs/public-information.md).

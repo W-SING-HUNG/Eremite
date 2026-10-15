@@ -15,6 +15,7 @@ Explain any Supplier contract impact. Preserve Host-owned policy, authorization,
 
 - [ ] The change is small and focused, with no unrelated formatting.
 - [ ] No secrets, real user data, unsanitized logs or generated QA/temp artifacts are included.
+- [ ] Public information checks pass for source, staged content and this description; validation and attribution remain accurate.
 - [ ] Validators, contracts and tests were not weakened to make checks pass.
 - [ ] Any runtime behavior change includes relevant tests, and contract compatibility is described.
 

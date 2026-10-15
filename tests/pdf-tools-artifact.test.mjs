@@ -45,7 +45,13 @@ assert.ok(tarEntries.has("package/schema/supplier-protocol-v1.schema.json"));
 assert.equal(names.some((name) => /(^|\/)vendor\/|\.(exe|dll)$/iu.test(name)), false, "rc5 must contain no bundled qpdf/native binaries or vendor fallback");
 assert.ok(tarEntries.has("package/LICENSE"));
 assert.ok(tarEntries.has("package/THIRD-PARTY-NOTICES"));
-assert.equal(names.some((name) => /(^|\/)(src|tests?|spec|benchmark|\.github|dev-harness|\.workbuddy)(\/|$)|\.js\.map$/u.test(name)), false);
+assert.equal(names.some((name) => /(^|\/)(src|tests?|spec|benchmark|dev-harness)(\/|$)|\.js\.map$/u.test(name)), false);
+// Bundled upstream example files remain intact; hidden directories/control paths do not.
+const hiddenDevelopmentPath = /(^|\/)\.[^/]+\/|(^|\/)\.[^/.]+$/u;
+assert.equal(hiddenDevelopmentPath.test("package/.private/config.json"), true);
+assert.equal(hiddenDevelopmentPath.test("package/.private"), true);
+assert.equal(hiddenDevelopmentPath.test("package/node_modules/dependency/.example.js"), false);
+assert.equal(names.some((name) => hiddenDevelopmentPath.test(name)), false);
 assert.equal(names.some((name) => /accepted-capabilities|host-contract|microsoft-office/iu.test(name)), false);
 
 const manifest = JSON.parse(tarEntries.get("package/package.json").toString("utf8"));

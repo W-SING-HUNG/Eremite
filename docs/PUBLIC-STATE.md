@@ -2,7 +2,7 @@
 
 The public Host source is version 1.7.0, including the completed maintenance, Emerald Pulse V1/V1.1 and Ask initialization Enter repair. The historical v1.6.1 tag remains unchanged. Canonical source: https://github.com/W-SING-HUNG/Eremite.
 
-Last Verified Date: **2026-10-15 (Asia/Shanghai; v1.7.0 source and release boundaries; dated evidence below)**
+Last Verified Date: **2026-10-16 (Asia/Shanghai; source-map dependency repair; v1.7.0 release evidence retains its dated scope)**
 
 ## Current Version
 
@@ -86,8 +86,12 @@ Generation checkpoint, 2026-10-13: the bounded Retry-evidence and Retry UI candi
 
 These completed acceptance and integration records apply to the identified PR #2 candidate and commits. Later maintenance does not invalidate those historical events or inherit their acceptance/CI; a future Release requires its own versioned publication evidence.
 
+## Current Dependency Security
+
+RESOLVED in the current source: `next@16.3.8 -> postcss@8.5.23 -> source-map-js` now resolves to `1.2.2`, the upstream patch for HIGH [GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q). An exact Host override and lockfile retain the compatible PostCSS range without changing framework or Supplier versions. Regression covers invalid/nested section offsets and normal SourceNode, generator and PostCSS mappings. The vulnerable package was production-transitive; Eremite exploit reachability was NOT VERIFIED. This dependency repair does not establish zero risk or change the historical v1.7.0 tag/Release. See [repair scope and validation](source-map-security.md).
+
 ## Known Risks
 
-FOLLOW-UP: source-map-js 1.2.1 production-transitive HIGH advisory [GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q) retains its security classification; upstream 1.2.2 is patched. Eremite exploit reachability is NOT VERIFIED. No remediation or zero-risk claim is made here. Default arbitrary long LibreOffice profiles and the native initialization cause remain bounded by the explicit short-root mitigation. Backup appVersion metadata retains the historical 1.3.0 value; compatibility depends on format, migration checksums and file integrity. At 375px with no file selected, Ask may require scrolling below the initial viewport; initial-viewport reachability remains a separate mobile usability FOLLOW-UP.
+FOLLOW-UP: Default arbitrary long LibreOffice profiles and the native initialization cause remain bounded by the explicit short-root mitigation. Backup appVersion metadata retains the historical 1.3.0 value; compatibility depends on format, migration checksums and file integrity. At 375px with no file selected, Ask may require scrolling below the initial viewport; initial-viewport reachability remains a separate mobile usability FOLLOW-UP.
 
 See [documentation boundary](public-baseline.md), [runtime configuration](tool-runtime.md), [backup](backup-and-restore.md), [security policy](../SECURITY.md) and [third-party inventory](../THIRD-PARTY-NOTICES.md).

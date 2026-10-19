@@ -1,11 +1,25 @@
 # Public information checks
 
-Public documentation describes supported behavior, technical validation and its limits. Preserve the tested result, date and source identifier without unnecessary development-assistant attribution or private operational instructions. Product AI Providers, real dependency names, license terms and required third-party attribution remain part of the technical record.
+Public documentation describes supported behavior, reproducible validation and its limits. Preserve technical facts, licenses, required author credit and third-party attribution. Keep private data and local execution evidence outside the source tree.
 
-Run `npm.cmd run check:public-exposure` before submitting public source. It checks tracked files and the fixed runtime archives. Use `node scripts/check-public-exposure.mjs --staged` to inspect the actual Git index, `--text-file <file>` for a proposed PR description or release body, and `--base <ref> --head <ref>` for new commit messages and author metadata. In CI, the complete verification command checks the PR title/body and new commit range from the event payload. It does not inspect or rewrite old history.
+Before preparing a public change, run:
 
-The check rejects recognized credentials, private user paths, internal repository/document references, unnecessary development-tool attribution, personal email addresses outside legal attribution, and tracked private/generated data. The policy definition and its synthetic regression may name development tools as negative examples. That exception does not exempt credentials or private paths. Reserved example addresses, GitHub no-reply identities and required upstream notices remain allowed. The rule is a bounded check, not proof that every possible secret or identifying detail has been detected; review proposed diffs and public metadata as well.
+```powershell
+npm.cmd run check:public-exposure
+npm.cmd run test:public-exposure
+npm.cmd run check:public-delivery
+node scripts/check-public-exposure.mjs --text-file <proposed-body-file>
+node scripts/check-public-exposure.mjs --base <base-ref> --head <head-ref>
+```
 
-Public PR comments and automated-review author identities are managed by GitHub, outside the source check. Review editable descriptions and comments separately. Editing visible text does not guarantee removal of earlier revisions, notifications, caches, forks or clones. Ordinary commits cannot remove old commit messages, author identities or prior file snapshots. Any historical removal or hosting configuration change requires a separate decision; existing tags and branch protection must be preserved.
+Enable the repository hooks with `git config --local core.hooksPath .githooks`. The pre-commit hook checks staged bytes and effective identities; commit-msg also checks the proposed message. Hooks can be bypassed, so CI remains required.
 
-New commit author and committer addresses must use a GitHub no-reply address; GitHub's own no-reply service committer is also allowed. Reserved example addresses are allowed in synthetic content, not as new public commit identities. Configure repository-local `user.name` and the account's effective privacy email, with `user.useConfigOnly=true`, and check both effective identities before committing. CI validates address form and new commit text; it does not authenticate ownership of every possible alias. Confirm the release account mapping and the actual server-generated squash metadata before tagging. Local configuration can be overridden by environment variables or external API/UI paths; repository CI and final metadata read-back provide additional checks, not an absolute guarantee against every external or administrative path.
+The source check includes tracked files and non-ignored new files. The delivery check inspects the Git index and effective author and committer identities, including environment overrides. Configure repository-local author settings with the account's GitHub no-reply address and `user.useConfigOnly=true`. Check actual server-generated squash metadata separately. An address-form check does not prove account ownership.
+
+Use `--extra-file <archive>` to inspect prepared distribution bytes, including ignored build output about to be published. ZIP and gzip/TAR contents are inspected recursively in memory, including paths, extended headers, comments and document-container metadata. UTF-16, common escaped text and bounded base64 representations are checked. Invalid, encrypted or unsupported archives and inspection-limit failures block the check. Inspection never extracts archives.
+
+CI checks source, new commit content/messages/identities, PR title/body changes and release name/body events. Supplier CI also inspects a prepared package. Run the text-file check before publication: a release event runs after GitHub accepts the release and cannot retract it. Comments, attachments, UI/API submissions and repository settings require separate review.
+
+Recognized credentials, personal paths, private/generated data, private repository references and unnecessary development-assistant provenance are rejected. Legal authorship, dependency identifiers, supported model names, reserved example addresses and required upstream attribution remain allowed. Policy definitions and synthetic tests may name rejected examples; credentials and personal paths have no blanket exemption.
+
+These are bounded checks. Encrypted documents, unsupported encodings, arbitrary steganography and external resources still need manual assessment. A successful source check does not certify all historical or hosted content. Ordinary changes cannot remove old snapshots, commit identities, cached PR diffs, logs, forks or downloaded copies. Historical removal, tag changes and hosting edits require separate review and authorization; existing protection and acceptance requirements remain in force.

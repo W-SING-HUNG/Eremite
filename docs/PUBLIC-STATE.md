@@ -58,7 +58,7 @@ Formal invocation and Retry resolve the checked executable again and pass only t
 
 ## Git / GitHub Source of Truth
 
-Public-information checks cover tracked files, staged bytes, fixed archives, submitted release/PR text and new commit messages/identities in CI. New author/committer addresses require GitHub no-reply identities, with release-account ownership and server-generated metadata checked separately. Legal attribution, supported AI/dependency/model names and synthetic content remain allowed; historical objects, hosting caches and external submission paths have separate limits. See [public information checks](public-information.md).
+Public-information checks cover tracked and non-ignored new files, staged bytes, effective proposed identities, encoded text, nested ZIP/TAR archives, document-container metadata, submitted release/PR text and new commit content/messages/identities in CI. Release events check the name/body after publication; pre-publication text checks remain required. New author/committer addresses require GitHub no-reply identities, with release-account ownership and server-generated metadata checked separately. Legal attribution, supported AI/dependency/model names and synthetic content remain allowed; historical objects, hosting caches and external submission paths have separate limits. See [public information checks](public-information.md).
 
 Public maintenance uses accepted clean export, a reviewed PR, required strict Verify, squash merge and main CI. New-version publication is a separate authorized step. Live refs and CI are queried at GitHub; the SHAs below identify dated PR #2 events, not a permanently current main HEAD.
 

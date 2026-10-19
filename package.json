@@ -38,9 +38,10 @@
     "test:project-state": "node tests/project-state-consistency.test.mjs && node --import ./tests/register-typescript-loader.mjs tests/project-state-behavior.test.mjs",
     "test:populated-public-upgrade": "node --import ./tests/register-typescript-loader.mjs tests/populated-public-upgrade.test.mjs",
     "test:loopback-http": "node tests/loopback-http.test.mjs",
-    "check:public-exposure": "node scripts/check-public-exposure.mjs",
-    "test:public-exposure": "node tests/public-exposure.test.mjs",
-    "test:source-map-security": "node tests/source-map-security.test.mjs"
+    "check:public-exposure": "node scripts/check-public-exposure.mjs --include-untracked",
+    "test:public-exposure": "node tests/public-exposure.test.mjs && node tests/public-bytes.test.mjs",
+    "test:source-map-security": "node tests/source-map-security.test.mjs",
+    "check:public-delivery": "node scripts/check-public-exposure.mjs --staged --check-identity"
   },
   "keywords": [],
   "author": "",

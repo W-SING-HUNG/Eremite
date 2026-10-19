@@ -1,14 +1,15 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, lstatSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { gunzipSync } from "node:zlib";
+import { inspectPublicBytes } from "./public-bytes.mjs";
 import path from "node:path";
 
 // These names are policy examples, not claims about how this project was developed.
 // Only this rule definition and its synthetic test may contain those examples.
-const policyFiles = new Set(["scripts/check-public-exposure.mjs", "tests/public-exposure.test.mjs"]);
+const policyFiles = new Set(["scripts/check-public-exposure.mjs", "tests/public-exposure.test.mjs", "scripts/public-bytes.mjs", "tests/public-bytes.test.mjs"]);
 const rules = [
-  ["credential", /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\b(?:github_pat_|gh[pousr]_)[A-Za-z0-9_]{25,}|\bAKIA[A-Z0-9]{16}\b|\bsk-(?:proj-)?[A-Za-z0-9_-]{25,}/gu],
+  ["credential", /\b(?:xox[baprs]-[A-Za-z0-9-]{24,}|npm_[A-Za-z0-9]{30,}|AIza[A-Za-z0-9_-]{30,})|https?:\/\/[^\s/:@]+:[^\s/@]{8,}@/gu],
+  ["credential", /-----BEGIN (?:RSA |DSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----|\b(?:github_pat_|gh[pousr]_)[A-Za-z0-9_]{25,}|\bAKIA[A-Z0-9]{16}\b|\bsk-(?:proj-)?[A-Za-z0-9_-]{25,}/gu],
   ["private-path", /\b[A-Za-z]:[\\/](?:Users[\\/](?!Public(?:[\\/]|\b))[^\s"'<>]+|Codex_program[^\s"'<>]*|豆包[^\s"'<>]*)|\/(?:Users|home)\/(?!runner(?:[\/]|\b))[^\s"'<>]+/gu],
   ["internal-reference", /\bEremite-internal\b|\bPROJECT-STATE\.md\b|docs[\\/](?:evidence|internal)[\\/]|\.codex[\\/](?:sessions|memories|worktrees)|\.agents[\\/]skills/giu],
   ["development-tool", /\b(?:Qoder|Codex|WorkBuddy|ChatGPT|Claude Code|Claude Desktop|Cursor IDE|Cursor AI)\b/giu],
@@ -26,10 +27,10 @@ function commitPrivacyEmail(value) {
   return /^[^@\s<>]+@users\.noreply\.github\.com$/iu.test(value) || value.toLowerCase() === "noreply@github.com";
 }
 
-export function scanPublicText(location, text, { thirdPartyAttribution = false } = {}) {
+function scanPlainPublicText(location, text, { thirdPartyAttribution = false } = {}) {
   const findings = [];
   const policyDefinition = policyFiles.has(location);
-  const legalText = /(?:^|\/)(?:LICENSE(?:\.[^/]+)?|NOTICE|THIRD-PARTY-NOTICES(?:\.md)?)$/iu.test(location);
+  const legalText = /(?:^|\/)(?:LICENSE(?:\.[^/]+)?|NOTICE|THIRD-PARTY-NOTICES(?:\.md)?|AUTHORS(?:\.[^/]+)?|COPYING(?:\.[^/]+)?)$/iu.test(location);
   for (const [rule, regex] of rules) {
     if (policyDefinition && ["development-tool", "internal-reference"].includes(rule)) continue;
     if (rule === "development-tool" && (legalText || thirdPartyAttribution)) continue;
@@ -40,6 +41,7 @@ export function scanPublicText(location, text, { thirdPartyAttribution = false }
     while ((match = regex.exec(scanned))) {
       if (rule === "personal-email" && publicEmail(match[0])) continue;
       if (rule === "development-tool") {
+        if (location === "scripts/consumer-smoke.mjs" && match[0].toLowerCase() === "workbuddy" && scanned[match.index - 1] === ".") continue;
         const start = scanned.lastIndexOf("\n", match.index - 1) + 1;
         const end = scanned.indexOf("\n", match.index);
         const line = scanned.slice(start, end < 0 ? undefined : end);
@@ -57,55 +59,62 @@ export function scanPublicText(location, text, { thirdPartyAttribution = false }
   return findings;
 }
 
-function excludedFile(filename) {
-  return filename === "docs/PROJECT-STATE.md"
-    || /^(?:data|\.qa|\.next(?:-dev)?|node_modules|docs\/(?:internal|evidence))\//u.test(filename)
-    || /(?:^|\/)\.env(?:\.|$)/u.test(filename) && filename !== ".env.example"
-    || /\.(?:sqlite(?:-wal|-shm)?|db|log|tsbuildinfo)$/iu.test(filename);
-}
-
-function inspectBytes(filename, bytes, findings, archive = false) {
-  if (excludedFile(filename)) findings.push({ location: filename, line: 1, rule: "private-or-generated-file" });
-  if (bytes.subarray(0, 16).toString("ascii") === "SQLite format 3\0") findings.push({ location: filename, line: 1, rule: "database-payload" });
-  const attribution = archive && /(?:^|\/)node_modules\/[^!]+\/(?:package\.json|licen[sc]e(?:\.[^/]*)?|notice(?:\.[^/]*)?)$/iu.test(filename);
-  findings.push(...scanPublicText(filename, bytes.toString("utf8"), { thirdPartyAttribution: attribution }));
-  if (/\.(?:exe|dll)$/iu.test(filename)) findings.push(...scanPublicText(filename, bytes.toString("utf16le"), { thirdPartyAttribution: attribution }));
-}
-
-function inspectArchive(filename, bytes, findings) {
-  const tar = gunzipSync(bytes);
-  for (let offset = 0; offset + 512 <= tar.length;) {
-    const header = tar.subarray(offset, offset + 512);
-    if (header.every(byte => byte === 0)) break;
-    const field = bytes => bytes.toString("utf8").replace(/\0.*$/su, "");
-    const prefix = field(header.subarray(345, 500));
-    const entry = (prefix ? prefix + "/" : "") + field(header.subarray(0, 100));
-    const size = Number.parseInt(field(header.subarray(124, 136)).trim() || "0", 8);
-    if (!Number.isSafeInteger(size) || size < 0 || offset + 512 + size > tar.length || entry.split("/").includes("..") || path.posix.isAbsolute(entry)) throw new Error("Invalid archive entry");
-    inspectBytes(filename + "!" + entry, tar.subarray(offset + 512, offset + 512 + size), findings, true);
-    offset += 512 + Math.ceil(size / 512) * 512;
+export function scanPublicText(location, text, options = {}) {
+  const candidates = new Set([text.normalize("NFKC")]);
+  for (let pass = 0; pass < 2; pass++) for (const value of [...candidates]) {
+    const decoded = value.replace(/\\u([0-9a-f]{4})|\\x([0-9a-f]{2})|&#(x[0-9a-f]+|\d+);|&(?:commat|colon|sol|bsol);/giu, (all, u, x, entity) => {
+      if (u || x) return String.fromCharCode(Number.parseInt(u || x, 16));
+      if (entity) { const code = entity[0].toLowerCase() === "x" ? Number.parseInt(entity.slice(1), 16) : Number(entity); return code <= 0x10ffff ? String.fromCodePoint(code) : all; }
+      return ({ "&commat;": "@", "&colon;": ":", "&sol;": "/", "&bsol;": "\\" })[all.toLowerCase()] ?? all;
+    }).replace(/(?:%[0-9a-f]{2})+/giu, encoded => { try { return decodeURIComponent(encoded); } catch { return encoded; } });
+    if (decoded !== value) candidates.add(decoded);
+    for (const match of value.matchAll(/(?<![A-Za-z0-9+/_-])[A-Za-z0-9+/_-]{20,}={0,2}(?![A-Za-z0-9+/_=-])/gu)) {
+      if (match[0].length > 65536) continue;
+      const decodedBytes = Buffer.from(match[0], "base64");
+      const candidate = decodedBytes.toString("utf8");
+      if (candidate.length >= 8 && [...candidate].filter(c => /[\x20-\x7e\r\n\t]/u.test(c)).length / candidate.length > 0.9) candidates.add(candidate);
+    }
+    if (candidates.size > 1000) return [{ location, line: 1, rule: "inspection-limit" }];
   }
+  const unique = new Map();
+  for (const candidate of candidates) for (const finding of scanPlainPublicText(location, candidate, options)) unique.set(JSON.stringify(finding), finding);
+  return [...unique.values()];
 }
 
-export function checkPublicExposure({ cwd = process.cwd(), staged = false, textFiles = [], extraFiles = [], base, head = "HEAD" } = {}) {
+export function scanPublicBytes(location, bytes) {
+  return inspectPublicBytes(location, bytes, scanPublicText);
+}
+
+
+export function checkPublicExposure({ cwd = process.cwd(), staged = false, textFiles = [], extraFiles = [], includeUntracked = false, checkIdentity = false, base, head = "HEAD" } = {}) {
   const findings = [];
   function git(...args) {
     const result = spawnSync("git", args, { cwd, windowsHide: true, maxBuffer: 32 * 1024 * 1024 });
     if (result.status !== 0) throw new Error("Cannot inspect public Git snapshot");
     return result.stdout;
   }
-  const filenames = git("ls-files", "--cached", "-z").toString("utf8").split("\0").filter(Boolean);
+  const filenames = git("ls-files", "--cached", ...(includeUntracked && !staged ? ["--others", "--exclude-standard"] : []), "-z").toString("utf8").split("\0").filter(Boolean);
   for (const filename of new Set([...filenames, ...extraFiles])) {
-    const bytes = staged ? git("show", ":" + filename) : readFileSync(path.join(cwd, filename));
-    if (filename.endsWith(".tgz")) inspectArchive(filename, bytes, findings);
-    else inspectBytes(filename, bytes, findings);
+    if (!staged && lstatSync(path.isAbsolute(filename) ? filename : path.join(cwd, filename)).isSymbolicLink()) { findings.push({ location: "source entry", line: 1, rule: "symbolic-file" }); continue; }
+    const bytes = staged && filenames.includes(filename) ? git("show", ":" + filename) : readFileSync(path.isAbsolute(filename) ? filename : path.join(cwd, filename));
+    findings.push(...scanPublicBytes(filenames.includes(filename) ? filename : "prepared file " + path.basename(filename), bytes));
   }
-  for (const file of textFiles) findings.push(...scanPublicText("submitted metadata", readFileSync(file, "utf8")));
-  if (base && !/^0+$/u.test(base)) {
+  for (const file of textFiles) findings.push(...scanPublicBytes("submitted metadata", readFileSync(file)));
+  if (checkIdentity) {
+    for (const role of ["AUTHOR", "COMMITTER"]) {
+      const identity = git("var", "GIT_" + role + "_IDENT").toString("utf8");
+      findings.push(...scanPublicText("proposed " + role.toLowerCase() + " identity", identity));
+      const email = /<([^>]+)>/u.exec(identity)?.[1];
+      if (!email || !commitPrivacyEmail(email)) findings.push({ location: "proposed identity", line: 1, rule: "commit-identity", role: role.toLowerCase() });
+    }
+  }
+  if (base) {
     // Only new commits are checked; historical objects are never silently rewritten.
-    const commits = git("rev-list", `${base}..${head}`).toString("utf8").trim().split("\n").filter(Boolean);
+    const commits = git("rev-list", /^0+$/u.test(base) ? head : `${base}..${head}`).toString("utf8").trim().split("\n").filter(Boolean);
     for (const sha of commits) {
       const message = git("show", "-s", "--format=%B", sha).toString("utf8");
+      const changed = git("diff-tree", "--root", "--no-commit-id", "-r", "--name-only", "--diff-filter=AM", "-z", sha).toString("utf8").split("\0").filter(Boolean);
+      for (const filename of changed) findings.push(...scanPublicBytes(filename, git("show", sha + ":" + filename)));
       findings.push(...scanPublicText("new commit " + sha.slice(0, 12), message));
       const identity = git("show", "-s", "--format=%an%x00%ae%x00%cn%x00%ce", sha).toString("utf8").trimEnd().split("\0");
       const location = "new commit identity " + sha.slice(0, 12);
@@ -123,6 +132,8 @@ function main(args) {
   for (let index = 0; index < args.length; index++) {
     const arg = args[index];
     if (arg === "--staged") options.staged = true;
+    else if (arg === "--include-untracked") options.includeUntracked = true;
+    else if (arg === "--check-identity") options.checkIdentity = true;
     else if (["--base", "--head", "--text-file", "--extra-file"].includes(arg)) {
       const value = args[++index];
       if (!value || value.startsWith("--")) throw new Error("Missing check option value");
@@ -141,6 +152,10 @@ function main(args) {
       const findings = scanPublicText("pull request metadata", metadata);
       if (findings.length) { console.error(JSON.stringify({ findings })); process.exitCode = 1; return; }
     } else if (process.env.GITHUB_EVENT_NAME === "push") options.base = event.before;
+    else if (process.env.GITHUB_EVENT_NAME === "release") {
+      const findings = scanPublicText("release metadata", (event.release.name ?? "") + "\n" + (event.release.body ?? ""));
+      if (findings.length) { console.error(JSON.stringify({ findings })); process.exitCode = 1; return; }
+    }
   }
   const result = checkPublicExposure(options);
   if (result.findings.length) { console.error(JSON.stringify(result)); process.exitCode = 1; }

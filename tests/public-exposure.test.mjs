@@ -64,6 +64,10 @@ try {
   event.pull_request.base.sha = base; writeFileSync(eventPath, JSON.stringify(event));
   const privateCommit = spawnSync(process.execPath, [cli], { cwd: root, env: cliEnv, windowsHide: true, encoding: "utf8" });
   assert.equal(privateCommit.status, 1); assert.match(privateCommit.stderr, /commit-identity/u); assert.doesNotMatch(privateCommit.stderr, /mailhost\.com/u);
+  writeFileSync(path.join(root, "transient.txt"), token); git("add", "--", "transient.txt"); git("commit", "-m", "Synthetic transient content");
+  writeFileSync(path.join(root, "transient.txt"), "Clean final snapshot."); git("add", "--", "transient.txt"); git("commit", "-m", "Synthetic final snapshot");
+  assert.ok(checkPublicExposure({ cwd: root, base }).findings.some(x => x.rule === "credential"), "transient secrets in new commits remain blocked after final snapshot cleanup");
+  assert.ok(checkPublicExposure({ cwd: root, base: "0".repeat(40) }).findings.some(x => x.rule === "commit-identity"), "a new-branch event cannot silently skip identity inspection");
   writeFileSync(path.join(root, "leak.sqlite"), "SQLite format 3\0synthetic"); git("add", "--", "leak.sqlite");
   assert.ok(checkPublicExposure({ cwd: root, staged: true }).findings.some(x => x.rule === "database-payload"));
   console.log("Public exposure regression passed: staged bytes, new messages/authors and submitted metadata reject; legal attribution, supported AI and synthetic addresses remain allowed; diagnostics redact values.");

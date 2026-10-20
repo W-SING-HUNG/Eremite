@@ -12,6 +12,8 @@ on:
       - reopened
       - edited
       - ready_for_review
+  release:
+    types: [published, edited]
   workflow_dispatch:
 permissions:
   contents: read
@@ -75,6 +77,14 @@ jobs:
           "TEMP=$qaTemp" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "TMP=$qaTemp" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "EREMITE_TOOL_WORKSPACE_DIR=$qaTemp" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: "Inspect public source and event metadata"
+        run: |
+          node scripts/check-public-exposure.mjs --include-untracked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/public-exposure.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/public-bytes.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: "Install locked dependencies"
         run: |
           npm.cmd ci

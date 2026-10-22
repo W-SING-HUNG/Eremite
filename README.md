@@ -62,6 +62,8 @@ npm.cmd ci
 npm.cmd run dev
 ```
 
+2026-10-22 源码身份说明：当前 `v1.7.0` Tag 与 Release 旧提交记录的文件树一致，记录差异不代表文件损坏，详见[日期化更正](docs/releases/v1.7.0.md#source-identity-clarification--2026-10-22)。
+
 随后访问 <http://127.0.0.1:3000>，首次启动时设置本地密码并登录。日常启动仍使用 `npm.cmd run dev`；需要更换端口时，使用 `npm.cmd run dev -- --port 3001`。
 
 构建并以生产模式在本机运行时，先停止开发服务，再执行：
@@ -137,7 +139,7 @@ npm.cmd run verify
 | **参与贡献 / 获取支持** | [Contributing](CONTRIBUTING.md) · [Support](SUPPORT.md) |
 | **安全报告** | [Security Policy](SECURITY.md) · [私密漏洞报告](https://github.com/W-SING-HUNG/Eremite/security/advisories/new) |
 
-已知限制见[正式发行说明](docs/releases/v1.7.0.md)：`source-map-js@1.2.1` 的 **HIGH** 安全公告仍未修复，Eremite 中的利用可达性尚未验证；真实外部 AI Provider 行为尚未完成验收，任意长路径下的 LibreOffice 默认运行环境仍有待验证。运行配置与缓解方式见[工具运行环境](docs/tool-runtime.md)。
+已知限制见[正式发行说明](docs/releases/v1.7.0.md)：固定 `v1.7.0` Tag 仍包含 `source-map-js@1.2.1` 的 **HIGH** 安全公告；公开 main 已通过[独立依赖修复](docs/source-map-security.md)锁定 `1.2.2`，不改变旧 Tag 或 Release。Eremite 中的利用可达性尚未验证；真实外部 AI Provider 行为尚未完成验收，任意长路径下的 LibreOffice 默认运行环境仍有待验证。运行配置与缓解方式见[工具运行环境](docs/tool-runtime.md)。
 
 ## 许可证
 

@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, unlink, writeFile, mkdtemp, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
+import { request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { File } from "node:buffer";
@@ -48,6 +49,8 @@ try {
   await mkdir(loadFailedPath);
 
   const sessionId = randomUUID();
+  const expiredSessionId = randomUUID();
+  databaseModule.db().prepare("INSERT INTO sessions (id, expires_at, created_at) VALUES (?, ?, ?)").run(expiredSessionId, new Date(Date.now() - 60_000).toISOString(), new Date().toISOString());
   databaseModule.db().prepare("INSERT INTO sessions (id, expires_at, created_at) VALUES (?, ?, ?)").run(sessionId, new Date(Date.now() + 60_000).toISOString(), new Date().toISOString());
   databaseModule.db().close();
   databaseModule = undefined;
@@ -207,13 +210,43 @@ try {
 
   const legacy = await fetch(`${baseUrl}/files/${pdfId}`, { headers: auth, redirect: "manual" });
   assert.equal(legacy.status, 307);
-  assert.equal(new URL(legacy.headers.get("location"), baseUrl).pathname, `/viewer/${pdfId}`);
+  assert.notEqual(port, 3000, "redirect regression must exercise a non-default port");
+  const viewerLocation = `/viewer/${pdfId}`;
+  assert.equal(legacy.headers.get("location"), viewerLocation);
+  assert.equal(new URL(legacy.headers.get("location"), baseUrl).href, `${baseUrl}${viewerLocation}`);
+  const followedLegacy = await fetch(`${baseUrl}/files/${pdfId}`, { headers: auth });
+  assert.equal(followedLegacy.status, 200);
+  assert.equal(followedLegacy.url, `${baseUrl}${viewerLocation}`);
+  for (const headers of [{}, { cookie: "eremite_session=invalid" }, { cookie: `eremite_session=${expiredSessionId}` }]) {
+    const denied = await fetch(`${baseUrl}/files/${pdfId}`, { headers, redirect: "manual" });
+    assert.equal(denied.status, 401);
+    assert.equal(denied.headers.get("location"), null);
+  }
+  // Send raw headers over loopback; never resolve or connect to these synthetic Hosts.
+  for (const headers of [
+    { host: "example.invalid" },
+    { host: "127.0.0.1:3000" },
+    { host: "127.0.0.1@example.invalid" },
+    { host: "127.0.0.1,example.invalid" },
+    { "x-forwarded-host": "example.invalid", "x-forwarded-port": "443" },
+    { "x-forwarded-proto": "https" },
+    { host: "example.invalid", "x-forwarded-host": "example.invalid", "x-forwarded-proto": "https", "x-forwarded-port": "443" },
+    { forwarded: "for=192.0.2.1;host=example.invalid;proto=https" },
+  ]) {
+    const redirected = await rawLoopbackGet(port, `/files/${pdfId}`, { ...auth, ...headers });
+    assert.equal(redirected.status, 307);
+    assert.equal(redirected.location, viewerLocation, "Host/forwarding headers cannot supply the redirect origin");
+    assert.equal(new URL(redirected.location, baseUrl).href, `${baseUrl}${viewerLocation}`);
+    const denied = await rawLoopbackGet(port, `/files/${pdfId}`, headers);
+    assert.equal(denied.status, 401);
+    assert.equal(denied.location, undefined);
+  }
   assert.equal((await fetch(`${baseUrl}/viewer/${pdfId}`, { redirect: "manual" })).status, 307);
   const viewerPage = await fetch(`${baseUrl}/viewer/${pdfId}`, { headers: auth });
   assert.equal(viewerPage.status, 200);
   assert.match(await viewerPage.text(), /HTTP range fixture|中文-range\.pdf/);
 
-  console.log("Viewer/upload HTTP test passed: streaming uploads beyond 1 MiB, atomic failures, 401/403/404/410/413/415/422/503/206/416 and security headers.");
+  console.log("Viewer/upload HTTP test passed: same-origin legacy redirects and hostile headers, streaming uploads beyond 1 MiB, atomic failures, 401/403/404/410/413/415/422/503/206/416 and security headers.");
 
   async function inboxFileSize(id) {
     const response = await fetch(`${baseUrl}/files/${id}/descriptor`, { headers: auth });
@@ -253,6 +286,19 @@ function assertSecurityHeaders(response, disposition, contentType) {
 
 function pickDescriptor(descriptor) {
   return { kind: descriptor.kind, availability: descriptor.availability };
+}
+
+async function rawLoopbackGet(port, pathname, headers) {
+  return new Promise((resolve, reject) => {
+    const request = httpRequest({ hostname: "127.0.0.1", port, path: pathname, headers }, (response) => {
+      response.resume();
+      response.on("end", () => resolve({ status: response.statusCode, location: response.headers.location }));
+      response.on("error", reject);
+    });
+    request.on("error", reject);
+    request.setTimeout(10_000, () => request.destroy(new Error("Loopback HTTP request timed out")));
+    request.end();
+  });
 }
 
 async function reservePort() {

@@ -1,6 +1,6 @@
 # Public source and distribution baseline
 
-This source-first Host distribution is version 1.7.0. The v1.6.1 tag and Supplier source tags retain their original identities. Release/tag identities and publication evidence are available in the [v1.7.0 GitHub Release](https://github.com/W-SING-HUNG/Eremite/releases/tag/v1.7.0); package metadata alone does not prove publication. There is no Windows installer, hosted deployment or npm publication.
+This source-first Host distribution is version 1.7.0. Host and Supplier source references have independent version boundaries. The [dated source-identity clarification](releases/v1.7.0.md#source-identity-clarification--2026-10-22) distinguishes the current v1.7.0 tag from older Release records without changing their identical source tree. Release/tag identities and publication evidence are available in the [v1.7.0 GitHub Release](https://github.com/W-SING-HUNG/Eremite/releases/tag/v1.7.0); package metadata alone does not prove publication. There is no Windows installer, hosted deployment or npm publication.
 
 ## Published source references
 

@@ -3,8 +3,9 @@ import { isAuthorized } from "@/platform/auth/service";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAuthorized())) return new NextResponse("Unauthorized", { status: 401 });
   const { id } = await params;
-  return NextResponse.redirect(new URL(`/viewer/${encodeURIComponent(id)}`, request.url), 307);
+  // Keep the caller's loopback origin and port; do not use a reconstructed URL or Host headers.
+  return new NextResponse(null, { status: 307, headers: { Location: `/viewer/${encodeURIComponent(id)}` } });
 }

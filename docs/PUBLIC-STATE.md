@@ -1,8 +1,8 @@
 # Eremite public support baseline
 
-The public Host source is version 1.7.0, including the completed maintenance, Emerald Pulse V1/V1.1 and Ask initialization Enter repair. The historical v1.6.1 tag remains unchanged. Canonical source: https://github.com/W-SING-HUNG/Eremite.
+The public Host source is version 1.7.0, including the completed maintenance, Emerald Pulse V1/V1.1 and Ask initialization Enter repair. The v1.6.1 release retains its historical scope; current v1.7.0 source identities are explained in the [dated clarification](releases/v1.7.0.md#source-identity-clarification--2026-10-22). Canonical source: https://github.com/W-SING-HUNG/Eremite.
 
-Last Verified Date: **2026-10-16 (Asia/Shanghai; source-map dependency repair; v1.7.0 release evidence retains its dated scope)**
+Last Verified Date: **2026-10-22 (Asia/Shanghai; local file redirect and source-identity clarification; earlier evidence retains its dated scope)**
 
 ## Current Version
 
@@ -32,7 +32,7 @@ RESOLVED (2026-10-15): a non-composing Enter during Ask initialization records o
 
 ## Current Architecture
 
-Host owns policy, validation, Run history, authorization and persistence through public owner services. AI is optional, request-bound and draft-only until explicit confirmation. Viewer is read-only except explicit TXT/Markdown editing through File Lifecycle; ZIP preview is directory-only; upload limit is 512 MiB. Loopback-only startup and request security checks remain enforced.
+Host owns policy, validation, Run history, authorization and persistence through public owner services. AI is optional, request-bound and draft-only until explicit confirmation. Viewer is read-only except explicit TXT/Markdown editing through File Lifecycle; ZIP preview is directory-only; upload limit is 512 MiB. Loopback-only startup and request security checks remain enforced. After authentication, the legacy `/files/[id]` route returns a relative 307 Location to `/viewer/[id]`, preserving the caller's origin and non-default port without trusting Host or forwarding headers. This does not add remote-access support.
 
 | Entry | Status | Boundary |
 | --- | --- | --- |
